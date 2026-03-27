@@ -1,0 +1,7 @@
+# Mutable section: src/components/landing/Hero.tsx lines 62-71
+# Metric: LLM judge checklist (5 criteria)
+# Judge: claude-haiku-4-5-20251001 | Generator: claude-sonnet-4-6
+round	score	status	description
+0	3/5	BASELINE	Original copy: generic 'unlock potential' framing, no competitor angle
+1	5/5	KEPT	Headline: 'See What Your Competitors Can't Hide' — adds competitor framing + curiosity
+2	5/5	KEPT	Subheader: reframed to competitive intel — 'reveal gaps in their strategy'

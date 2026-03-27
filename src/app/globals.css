@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+:root {
+  /* Backgrounds */
+  --vm-base: #010101;
+  --vm-surface: rgba(28, 27, 36, 0.15);
+  --vm-card: rgba(255, 255, 255, 0.03);
+  --vm-card-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --vm-border: rgba(255, 255, 255, 0.05);
+  --vm-border-hover: rgba(255, 255, 255, 0.10);
+  --vm-border-focus: rgba(201, 103, 232, 0.40);
+
+  /* Text */
+  --vm-text-1: #FFFFFF;
+  --vm-text-2: rgba(255, 255, 255, 0.80);
+  --vm-text-3: rgba(255, 255, 255, 0.50);
+
+  /* Gradient stops */
+  --vm-gradient-start: #FA93FA;
+  --vm-gradient-mid: #C967E8;
+  --vm-gradient-end: #983AD6;
+
+  /* Status */
+  --vm-success: #34D399;
+  --vm-warning: #FBBF24;
+  --vm-error: #F87171;
+  --vm-info: #60A5FA;
+
+  /* Semantic aliases */
+  --background: var(--vm-base);
+  --foreground: var(--vm-text-1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--vm-base);
+  color: var(--vm-text-1);
+  font-family: var(--font-sans), sans-serif;
+}
+
+/* Gradient text utility — hero headlines only */
+.vm-gradient-text {
+  background: linear-gradient(to bottom right, #FFFFFF 30%, #C967E8 70%, #FA93FA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Keyframes */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
