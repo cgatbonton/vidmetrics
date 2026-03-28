@@ -136,7 +136,7 @@ export default function Hero() {
 
       {showSidebar ? (
         <div className="flex items-start gap-6 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="hidden lg:block sticky top-4">
+          <div className="hidden lg:block sticky top-4 pt-16">
             <SavedSearchesSidebar
               saves={saves}
               isLoading={savesLoading}
