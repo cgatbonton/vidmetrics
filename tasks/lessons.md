@@ -16,7 +16,7 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Date**: 2026-03-27
 - **Source**: correction
 - **Target**: `CLAUDE.md`
-- **Status**: ready-to-graduate
+- **Status**: graduated (see Graduated section — rule is live in root CLAUDE.md)
 - **Lesson**: The register route used `createErrorResponse()` inline for the EMAIL_TAKEN case even though that code existed in the ERRORS catalog. The critic had to catch this. Second occurrence: `checkRateLimit` inlined RATE_LIMITED strings instead of calling `errorResponse("RATE_LIMITED")`. Same violation, different file, different session.
 - **Rule**: When the error code exists in the ERRORS catalog in `src/lib/errors.ts`, always call `errorResponse(key)`. Reserve `createErrorResponse()` for one-off errors with no catalog entry.
 
@@ -188,6 +188,38 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Status**: captured
 - **Lesson**: The video analysis POST route receives a `video` object from the client. Rather than passing `body.video` directly to `generateVideoAiAnalysis`, the route validates required fields, then constructs a `sanitizedVideo` with only the fields the AI prompt consumes. Unknown client-supplied fields cannot reach the AI call or pollute the prompt.
 - **Rule**: When a route passes client-supplied data to an AI generation function, construct a sanitized object with only the known, validated fields before calling the AI function. Never pass `body.someObject` directly — unknown fields can pollute the prompt or introduce injection surface.
+
+### Nested `<button>` inside `<button>` requires `e.stopPropagation()` on inner click
+- **Date**: 2026-03-28
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: The delete button in `SavedSearchesSidebar` is rendered inside the channel-select button. Without calling `e.stopPropagation()` in the delete handler, a delete click also fires the parent button's `onClick`, triggering an unintended channel selection. The `handleDelete` function calls `e.stopPropagation()` before any async work to prevent the event from bubbling.
+- **Rule**: When a clickable element (e.g., a delete icon) is nested inside another clickable element, always call `e.stopPropagation()` at the top of the inner handler. Failure to do so causes both handlers to fire — the outer action fires even when the user intended only the inner one.
+
+### Instantiate shared hooks once at the layout root; pass state and methods as props
+- **Date**: 2026-03-28
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: `useSavedChannels` is called once in `Hero` and its `saves`, `isLoading`, `deleteChannel`, and `fetchSaves` values are passed down to `SavedSearchesSidebar` as props. If the sidebar had called `useSavedChannels` independently, it would issue a second fetch, hold independent state, and desync from the parent. The single-instance pattern keeps all consumers reading from one authoritative source.
+- **Rule**: When two sibling or parent-child components need the same async data, instantiate the hook once at their common ancestor and pass the returned state and mutators as props. Never call the same data-fetching hook independently in two components that render simultaneously — it causes duplicate network requests and state desync.
+
+### Optimistic list removal on DELETE — remove locally, do not refetch
+- **Date**: 2026-03-28
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: `deleteChannel` in `useSavedChannels` calls `setSaves(prev => prev.filter(s => s.id !== id))` on a successful DELETE response. Calling `fetchSaves()` instead would add a network round-trip and flash a loading state. Optimistic removal keeps the UI instant and avoids the refetch cost. The local state is already authoritative — the item is confirmed deleted by the 200 response.
+- **Rule**: When a hook manages a list and exposes a delete mutation, remove the item from local state on successful response using `setState(prev => prev.filter(...))`. Do not call the fetch function again — a confirmed-delete item needs no server round-trip to remove from the UI.
+
+### Thread `sidebarOpen` prop to conditionalize grid density and section padding
+- **Date**: 2026-03-28
+- **Source**: discovery
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: When the saved-searches sidebar is visible, the main content area loses ~256px of horizontal space. `AnalyticsSection` receives a `sidebarOpen` boolean and changes its outer padding (full-bleed vs. max-width centered), and `VideoGrid` receives the same prop to switch from a 5-column to a 4-column layout (`lg:grid-cols-5` → `lg:grid-cols-4`). The boolean threads from `Hero` → `AnalyticsSection` → `VideoGrid`. This coupling is intentional — the grid density is a function of available width, which the child cannot measure on its own without a ResizeObserver.
+- **Rule**: When a sidebar or panel reduces available content width, pass a `sidebarOpen` boolean through the component tree to components that need to change their density or padding. This is simpler than a ResizeObserver and avoids layout shift caused by post-render measurement.
 
 ## Ready to Graduate
 

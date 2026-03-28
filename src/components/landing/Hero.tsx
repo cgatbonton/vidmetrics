@@ -31,6 +31,8 @@ export default function Hero() {
   const fetchSavesRef = useRef(fetchSaves);
   fetchSavesRef.current = fetchSaves;
 
+  const showSidebar = !!user && saves.length > 0;
+
   const handleSelectChannel = useCallback((channel: SavedChannel) => {
     setAnalysisData({
       channel: {
@@ -132,18 +134,9 @@ export default function Hero() {
         </div>
       </div>
 
-      {analysisData && user ? (
-        <div className="flex gap-6 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex-1 min-w-0">
-            <AnimatePresence mode="wait">
-              <AnalyticsSection
-                data={analysisData}
-                onSave={handleSave}
-                sidebarOpen
-              />
-            </AnimatePresence>
-          </div>
-          <div className="hidden lg:block">
+      {showSidebar ? (
+        <div className="flex items-start gap-6 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="hidden lg:block sticky top-4">
             <SavedSearchesSidebar
               saves={saves}
               isLoading={savesLoading}
@@ -151,6 +144,17 @@ export default function Hero() {
               onDeleteChannel={deleteChannel}
               selectedChannelId={analysisData?.channel.channelId}
             />
+          </div>
+          <div className="flex-1 min-w-0">
+            <AnimatePresence mode="wait">
+              {analysisData && (
+                <AnalyticsSection
+                  data={analysisData}
+                  onSave={handleSave}
+                  sidebarOpen
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
       ) : (
