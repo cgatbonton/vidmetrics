@@ -33,15 +33,15 @@ export interface VideoAnalysis {
   radarScores: RadarScores;
 }
 
-export interface AnalysisResponse {
-  entity: VideoAnalysis;
-  constraints: {
-    canSave: boolean;
-  };
-  nextActions: string[];
+export interface AnalysisConstraints {
+  canSave: boolean;
 }
 
-// --- Channel Analysis Types ---
+export interface AnalysisResponse {
+  entity: VideoAnalysis;
+  constraints: AnalysisConstraints;
+  nextActions: string[];
+}
 
 export type VmsScoreTier = 'viral' | 'hot' | 'average' | 'underperforming';
 
@@ -59,7 +59,7 @@ export interface ScoredVideo {
   commentRatio: number;
   viewsPerDay: number;
   engagementRate: number;
-  vmsScore: number;         // 0-100
+  vmsScore: number;
   vmsTier: VmsScoreTier;
 }
 
@@ -91,16 +91,14 @@ export interface LabeledVideo extends ScoredVideo {
 
 export interface ChannelAnalysis {
   channel: ChannelInfo;
-  videos: LabeledVideo[];         // top 25, sorted by vmsScore desc, with content type labels
-  contentTypes: ContentTypeBreakdown[];  // sorted by avgVmsScore desc
+  videos: LabeledVideo[];
+  contentTypes: ContentTypeBreakdown[];
   aiAnalysis: AiAnalysis;
 }
 
 export interface ChannelAnalysisResponse {
   entity: ChannelAnalysis;
-  constraints: {
-    canSave: boolean;
-  };
+  constraints: AnalysisConstraints;
   nextActions: string[];
 }
 
@@ -112,6 +110,19 @@ export interface SavedAnalysis {
   channelName: string;
   metrics: VideoAnalysis;
   analyzedAt: string;
+}
+
+export interface SavedChannel {
+  id: string;
+  channelId: string;
+  channelName: string;
+  channelAvatar: string;
+  subscriberCount: number;
+  videoCount: number;
+  videos: LabeledVideo[];
+  contentTypes: ContentTypeBreakdown[];
+  aiAnalysis: AiAnalysis;
+  savedAt: string;
 }
 
 export interface MetricSnapshot {

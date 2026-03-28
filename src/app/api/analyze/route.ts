@@ -18,9 +18,10 @@ import { auditLog } from "@/lib/audit";
 import { emitEvent } from "@/lib/events";
 import type { ChannelAnalysisResponse } from "@/types/analysis";
 
-// --- Single-video analysis (backward compatibility) ---
-
 async function handleVideoAnalysis(videoId: string, url: string) {
+  const actor = await getActor();
+  const authenticated = !isAnonymous(actor);
+
   let videoItem;
   let channelItem;
 
@@ -35,32 +36,31 @@ async function handleVideoAnalysis(videoId: string, url: string) {
   }
 
   const analysis = computeAnalysis(videoItem, channelItem);
-  const actor = await getActor();
-  const authenticated = !isAnonymous(actor);
 
   if (authenticated) {
     const supabase = await createServerClient();
-    await Promise.all([
-      supabase.from("metric_snapshots").insert({
-        video_id: videoId,
-        view_count: analysis.viewCount,
-        like_count: analysis.likeCount,
-        comment_count: analysis.commentCount,
-      }),
-      auditLog({
-        actor,
-        action: "analysis.completed",
-        target: videoId,
-        context: { url },
-        outcome: { title: analysis.title, channelName: analysis.channelName },
-      }),
-      emitEvent({
-        type: "analysis.completed",
-        entityId: videoId,
-        data: { title: analysis.title, channelName: analysis.channelName },
-      }),
-    ]);
+    await supabase.from("metric_snapshots").insert({
+      video_id: videoId,
+      view_count: analysis.viewCount,
+      like_count: analysis.likeCount,
+      comment_count: analysis.commentCount,
+    });
   }
+
+  await Promise.all([
+    auditLog({
+      actor,
+      action: "analysis.completed",
+      target: videoId,
+      context: { url },
+      outcome: { title: analysis.title, channelName: analysis.channelName },
+    }),
+    emitEvent({
+      type: "analysis.completed",
+      entityId: videoId,
+      data: { title: analysis.title, channelName: analysis.channelName },
+    }),
+  ]);
 
   return NextResponse.json({
     entity: analysis,
@@ -70,8 +70,6 @@ async function handleVideoAnalysis(videoId: string, url: string) {
       : ["sign_up", "analyze_another"],
   });
 }
-
-// --- Channel analysis (primary flow) ---
 
 function mapRawVideosToVmsInput(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,12 +91,15 @@ function mapRawVideosToVmsInput(
   });
 }
 
-const TOP_VIDEOS_LIMIT = 25;
+const AI_ANALYSIS_LIMIT = 25;
 
 async function handleChannelAnalysis(
   identifier: { type: "handle" | "id" | "custom"; value: string },
   url: string
 ) {
+  const actor = await getActor();
+  const authenticated = !isAnonymous(actor);
+
   let channelId: string;
 
   try {
@@ -108,16 +109,16 @@ async function handleChannelAnalysis(
   }
 
   let channelData;
-  try {
-    channelData = await fetchChannelWithAvatar(channelId);
-  } catch {
-    return errorResponse("CHANNEL_NOT_FOUND");
-  }
-
   let rawVideos;
   try {
-    rawVideos = await fetchRecentVideos(channelId);
-  } catch {
+    [channelData, rawVideos] = await Promise.all([
+      fetchChannelWithAvatar(channelId),
+      fetchRecentVideos(channelId),
+    ]);
+  } catch (error) {
+    if (error instanceof Error && error.message === "CHANNEL_NOT_FOUND") {
+      return errorResponse("CHANNEL_NOT_FOUND");
+    }
     return errorResponse("YOUTUBE_API_ERROR");
   }
 
@@ -126,10 +127,9 @@ async function handleChannelAnalysis(
   }
 
   const vmsInput = mapRawVideosToVmsInput(rawVideos);
-  const scoredVideos = computeVmsScores(vmsInput).slice(0, TOP_VIDEOS_LIMIT);
+  const allScoredVideos = computeVmsScores(vmsInput);
 
-  // Content type classification + AI analysis
-  const { labeledVideos, breakdown } = classifyContentTypes(scoredVideos);
+  const { labeledVideos, breakdown } = classifyContentTypes(allScoredVideos);
 
   const channelInfo = {
     channelId: channelData.id,
@@ -143,7 +143,7 @@ async function handleChannelAnalysis(
   try {
     aiAnalysis = await generateAiAnalysis({
       channel: channelInfo,
-      videos: labeledVideos,
+      videos: labeledVideos.slice(0, AI_ANALYSIS_LIMIT),
       contentTypes: breakdown,
     });
   } catch {
@@ -155,31 +155,26 @@ async function handleChannelAnalysis(
     };
   }
 
-  const actor = await getActor();
-  const authenticated = !isAnonymous(actor);
-
-  if (authenticated) {
-    await Promise.all([
-      auditLog({
-        actor,
-        action: "channel_analysis.completed",
-        target: channelId,
-        context: { url },
-        outcome: {
-          channelName: channelData.title,
-          videosScored: scoredVideos.length,
-        },
-      }),
-      emitEvent({
-        type: "channel_analysis.completed",
-        entityId: channelId,
-        data: {
-          channelName: channelData.title,
-          videosScored: scoredVideos.length,
-        },
-      }),
-    ]);
-  }
+  await Promise.all([
+    auditLog({
+      actor,
+      action: "channel_analysis.completed",
+      target: channelId,
+      context: { url },
+      outcome: {
+        channelName: channelData.title,
+        videosScored: labeledVideos.length,
+      },
+    }),
+    emitEvent({
+      type: "channel_analysis.completed",
+      entityId: channelId,
+      data: {
+        channelName: channelData.title,
+        videosScored: labeledVideos.length,
+      },
+    }),
+  ]);
 
   const response: ChannelAnalysisResponse = {
     entity: {
@@ -197,9 +192,7 @@ async function handleChannelAnalysis(
   return NextResponse.json(response);
 }
 
-// --- Route handler ---
-
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   const body = await request.json().catch(() => null);
 
   if (!body?.url) {

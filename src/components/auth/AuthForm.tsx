@@ -1,15 +1,32 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { Mail } from 'lucide-react';
+import { PENDING_SAVE_FLAG } from '@/lib/pending-saves';
+import type { ChannelAnalysis } from '@/types/analysis';
+
+export type AuthMode = 'login' | 'signup';
 
 interface AuthFormProps {
-  mode: 'login' | 'signup';
+  mode: AuthMode;
   onSuccess: () => void;
   onToggleMode: () => void;
+  onSignupConfirmation?: () => void;
+  onDismiss?: () => void;
+  pendingAnalysis?: ChannelAnalysis | null;
 }
+
+const AUTH_ENDPOINTS: Record<AuthMode, string> = {
+  login: '/api/login',
+  signup: '/api/register',
+};
+
+const FALLBACK_ERRORS: Record<AuthMode, string> = {
+  login: 'Login failed',
+  signup: 'Registration failed',
+};
 
 const INPUT_CLASSES = cn(
   'w-full bg-white/[0.05] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30',
@@ -17,50 +34,75 @@ const INPUT_CLASSES = cn(
   'transition-colors'
 );
 
-export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  onSuccess,
+  onToggleMode,
+  onSignupConfirmation,
+  onDismiss,
+  pendingAnalysis,
+}: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent): Promise<void> {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
     try {
-      const supabase = createBrowserSupabaseClient();
+      const res = await fetch(AUTH_ENDPOINTS[mode], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          ...(mode === 'signup' && pendingAnalysis ? { pendingAnalysis } : {}),
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error?.reason || FALLBACK_ERRORS[mode]);
+        return;
+      }
 
       if (mode === 'login') {
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (authError) {
-          setError('Invalid email or password');
-          return;
-        }
-
         onSuccess();
       } else {
-        const { error: authError } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (authError) {
-          setError(authError.message);
-          return;
+        setConfirmationSent(true);
+        onSignupConfirmation?.();
+        if (pendingAnalysis) {
+          try { localStorage.setItem(PENDING_SAVE_FLAG, 'true'); } catch {}
         }
-
-        onSuccess();
       }
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (confirmationSent) {
+    return (
+      <div className="flex flex-col items-center text-center py-4 space-y-4">
+        <div className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[var(--vm-gradient-start)] to-[var(--vm-gradient-end)]">
+          <Mail className="w-7 h-7 text-white" />
+        </div>
+        <h3 className="text-lg font-semibold text-white">Check your email</h3>
+        <p className="text-sm text-white/50 max-w-[280px]">
+          We sent a confirmation link to{' '}
+          <span className="text-white/80">{email}</span>. Click the link to
+          activate your account.
+        </p>
+        <Button variant="gradient" className="w-full mt-2" onClick={onDismiss}>
+          Got it
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -107,18 +149,29 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
         {mode === 'login' ? 'Sign In' : 'Create Account'}
       </Button>
 
-      <p className="text-sm text-white/50 text-center">
-        {mode === 'login'
-          ? "Don't have an account? "
-          : 'Already have an account? '}
-        <button
-          type="button"
-          onClick={onToggleMode}
-          className="text-white/80 hover:text-white underline-offset-2 hover:underline transition-colors"
-        >
-          {mode === 'login' ? 'Sign up' : 'Log in'}
-        </button>
-      </p>
+      <ToggleModePrompt mode={mode} onToggle={onToggleMode} />
     </form>
+  );
+}
+
+interface ToggleModePromptProps {
+  mode: AuthMode;
+  onToggle: () => void;
+}
+
+function ToggleModePrompt({ mode, onToggle }: ToggleModePromptProps): React.ReactElement {
+  const isLogin = mode === 'login';
+
+  return (
+    <p className="text-sm text-white/50 text-center">
+      {isLogin ? "Don't have an account? " : 'Already have an account? '}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-white/80 hover:text-white underline-offset-2 hover:underline transition-colors"
+      >
+        {isLogin ? 'Sign up' : 'Log in'}
+      </button>
+    </p>
   );
 }

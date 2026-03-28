@@ -1,12 +1,18 @@
 import openai from "@/lib/openai";
-import type { ChannelInfo, ScoredVideo } from "@/types/analysis";
-import type { ContentTypeBreakdown, AiAnalysis } from "@/types/analysis";
+import type {
+  ChannelInfo,
+  LabeledVideo,
+  ContentTypeBreakdown,
+  AiAnalysis,
+} from "@/types/analysis";
 
 interface AiAnalysisInput {
   channel: ChannelInfo;
-  videos: (ScoredVideo & { contentType: string })[];
+  videos: LabeledVideo[];
   contentTypes: ContentTypeBreakdown[];
 }
+
+const PROMPT_TOP_VIDEOS = 10;
 
 function buildPrompt(input: AiAnalysisInput): string {
   const { channel, videos, contentTypes } = input;
@@ -19,7 +25,7 @@ function buildPrompt(input: AiAnalysisInput): string {
     .join("\n");
 
   const topVideos = videos
-    .slice(0, 10)
+    .slice(0, PROMPT_TOP_VIDEOS)
     .map(
       (v) =>
         `- "${v.title}" [${v.contentType}] — VMS ${v.vmsScore}, ${v.viewCount.toLocaleString()} views, ${v.likeCount.toLocaleString()} likes, ${v.commentCount.toLocaleString()} comments, ${v.duration}`
@@ -31,7 +37,7 @@ function buildPrompt(input: AiAnalysisInput): string {
 CHANNEL: ${channel.channelName}
 Subscribers: ${channel.subscriberCount.toLocaleString()}
 Total videos: ${channel.videoCount.toLocaleString()}
-Videos analyzed (last 30 days): ${videos.length}
+Videos analyzed: ${videos.length}
 
 CONTENT TYPE BREAKDOWN:
 ${contentTypeLines}
@@ -66,32 +72,23 @@ export async function generateAiAnalysis(
 
   const raw = completion.choices[0]?.message?.content ?? "";
 
-  try {
-    const parsed = JSON.parse(raw);
+  function toAiAnalysis(parsed: Record<string, unknown>): AiAnalysis {
     return {
-      whatsWorking: parsed.whatsWorking ?? "",
-      contentStrategy: parsed.contentStrategy ?? "",
-      opportunityGaps: parsed.opportunityGaps ?? "",
-      keyTakeaway: parsed.keyTakeaway ?? "",
+      whatsWorking: String(parsed.whatsWorking ?? ""),
+      contentStrategy: String(parsed.contentStrategy ?? ""),
+      opportunityGaps: String(parsed.opportunityGaps ?? ""),
+      keyTakeaway: String(parsed.keyTakeaway ?? ""),
     };
+  }
+
+  try {
+    return toAiAnalysis(JSON.parse(raw));
   } catch {
-    // If the model wraps in code fences, strip them
     const cleaned = raw.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
     try {
-      const parsed = JSON.parse(cleaned);
-      return {
-        whatsWorking: parsed.whatsWorking ?? "",
-        contentStrategy: parsed.contentStrategy ?? "",
-        opportunityGaps: parsed.opportunityGaps ?? "",
-        keyTakeaway: parsed.keyTakeaway ?? "",
-      };
+      return toAiAnalysis(JSON.parse(cleaned));
     } catch {
-      return {
-        whatsWorking: raw,
-        contentStrategy: "",
-        opportunityGaps: "",
-        keyTakeaway: "",
-      };
+      return { whatsWorking: raw, contentStrategy: "", opportunityGaps: "", keyTakeaway: "" };
     }
   }
 }

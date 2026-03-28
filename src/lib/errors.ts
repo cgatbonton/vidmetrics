@@ -58,8 +58,8 @@ export const ERRORS = {
   },
   NO_RECENT_VIDEOS: {
     code: "NO_RECENT_VIDEOS",
-    reason: "This channel has no videos published in the last 30 days",
-    remediation: "Try a more active channel",
+    reason: "This channel has no public videos",
+    remediation: "Try a channel with public videos",
     status: 404,
   },
   CHANNEL_NOT_FOUND: {
@@ -85,6 +85,36 @@ export const ERRORS = {
     reason: "An account with this email already exists",
     remediation: "Try logging in instead, or use a different email",
     status: 409,
+  },
+  LOGIN_FAILED: {
+    code: "LOGIN_FAILED",
+    reason: "Invalid email or password",
+    remediation: "Check your credentials and try again",
+    status: 401,
+  },
+  LOGOUT_FAILED: {
+    code: "LOGOUT_FAILED",
+    reason: "Failed to sign out",
+    remediation: "Try again or clear your browser cookies",
+    status: 500,
+  },
+  REGISTRATION_FAILED: {
+    code: "REGISTRATION_FAILED",
+    reason: "Unable to create account",
+    remediation: "Check your email and password and try again",
+    status: 400,
+  },
+  RATE_LIMITED: {
+    code: "RATE_LIMITED",
+    reason: "Too many attempts — please wait a minute and try again",
+    remediation: "Supabase limits confirmation emails per hour",
+    status: 429,
+  },
+  PASSWORD_TOO_SHORT: {
+    code: "PASSWORD_TOO_SHORT",
+    reason: "Password must be at least 8 characters",
+    remediation: "Choose a longer password",
+    status: 400,
   },
 } as const;
 

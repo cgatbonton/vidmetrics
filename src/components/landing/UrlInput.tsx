@@ -7,26 +7,26 @@ import { useAnalyze } from '@/hooks/useAnalyze';
 import type { ChannelAnalysis } from '@/types/analysis';
 
 interface UrlInputProps {
-  onAnalyze: (data: ChannelAnalysis, constraints: { canSave: boolean }) => void;
+  onAnalyze: (data: ChannelAnalysis) => void;
 }
 
 export function UrlInput({ onAnalyze }: UrlInputProps) {
   const [url, setUrl] = useState('');
-  const { data, constraints, error, isLoading, analyze } = useAnalyze();
+  const { data, error, isLoading, analyze } = useAnalyze();
   const onAnalyzeRef = useRef(onAnalyze);
-  useEffect(() => { onAnalyzeRef.current = onAnalyze; });
+  onAnalyzeRef.current = onAnalyze;
 
   useEffect(() => {
-    if (data && constraints) {
-      onAnalyzeRef.current(data, constraints);
+    if (data) {
+      onAnalyzeRef.current(data);
     }
-  }, [data, constraints]);
+  }, [data]);
 
-  const handleSubmit = (e: FormEvent) => {
+  function handleSubmit(e: FormEvent): void {
     e.preventDefault();
     if (!url.trim() || isLoading) return;
     analyze(url.trim());
-  };
+  }
 
   return (
     <form onSubmit={handleSubmit}>
@@ -44,12 +44,15 @@ export function UrlInput({ onAnalyze }: UrlInputProps) {
           loading={isLoading}
           className="shrink-0"
         >
-          <span className="flex items-center gap-2">
-            <Search className="w-4 h-4" />
-            Analyze
-          </span>
+          <Search className="w-4 h-4" />
+          Analyze
         </Button>
       </div>
+      {isLoading && (
+        <p className="text-sm text-white/40 mt-2">
+          This may take up to 30 seconds while we fetch and analyze the channel&apos;s videos.
+        </p>
+      )}
       {error && (
         <p className="text-sm text-[var(--vm-error)] mt-2">{error}</p>
       )}

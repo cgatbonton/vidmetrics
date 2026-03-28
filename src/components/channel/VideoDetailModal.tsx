@@ -4,6 +4,9 @@ import { Modal } from '@/components/ui/Modal';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { ScoreBadge } from '@/components/channel/ScoreBadge';
+import { EngagementRadar } from '@/components/charts/EngagementRadar';
+import { ViewsOverTimeChart } from '@/components/charts/ViewsOverTimeChart';
+import { computeRadarScores } from '@/lib/metrics';
 import { formatCompact, formatPercent } from '@/lib/utils';
 import type { ScoredVideo, VmsScoreTier } from '@/types/analysis';
 
@@ -11,6 +14,7 @@ interface VideoDetailModalProps {
   video: ScoredVideo | null;
   isOpen: boolean;
   onClose: () => void;
+  channelSubs?: number;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -31,16 +35,28 @@ const TIER_LABELS: Record<VmsScoreTier, string> = {
   underperforming: 'Underperforming',
 };
 
+const NOOP = () => {};
+
 export function VideoDetailModal({
   video,
   isOpen,
   onClose,
+  channelSubs = 0,
 }: VideoDetailModalProps) {
   if (!video) return null;
 
+  const radarScores = computeRadarScores({
+    engagementRate: video.engagementRate,
+    likeRatio: video.likeRatio,
+    commentRatio: video.commentRatio,
+    viewsPerDay: video.viewsPerDay,
+    channelSubs,
+    contentScore: 50,
+  });
+
   const metrics: { label: string; value: string; raw?: number }[] = [
     { label: 'Views', value: formatCompact(video.viewCount), raw: video.viewCount },
-    { label: 'Views/Day', value: formatCompact(video.viewsPerDay), raw: video.viewsPerDay },
+    { label: 'Views/Day', value: formatCompact(Math.round(video.viewsPerDay)), raw: Math.round(video.viewsPerDay) },
     { label: 'Likes', value: formatCompact(video.likeCount), raw: video.likeCount },
     { label: 'Comments', value: formatCompact(video.commentCount), raw: video.commentCount },
     { label: 'Like Ratio', value: formatPercent(video.likeRatio), raw: video.likeRatio },
@@ -72,6 +88,10 @@ export function VideoDetailModal({
           </span>
         </div>
 
+        <div className="mt-6">
+          <EngagementRadar scores={radarScores} />
+        </div>
+
         <div className="grid grid-cols-2 gap-3 mt-6">
           {metrics.map((metric) => (
             <GlassCard key={metric.label} className="p-3">
@@ -90,6 +110,15 @@ export function VideoDetailModal({
               </div>
             </GlassCard>
           ))}
+        </div>
+
+        <div className="mt-6">
+          <ViewsOverTimeChart
+            snapshots={[]}
+            publishedAt={video.publishedAt}
+            currentViews={video.viewCount}
+            onDateRangeChange={NOOP}
+          />
         </div>
       </div>
     </Modal>

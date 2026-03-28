@@ -1,4 +1,11 @@
-import type { SavedAnalysis, VideoAnalysis } from "@/types/analysis";
+import type {
+  SavedAnalysis,
+  SavedChannel,
+  VideoAnalysis,
+  LabeledVideo,
+  ContentTypeBreakdown,
+  AiAnalysis,
+} from "@/types/analysis";
 
 interface SavedAnalysisRow {
   id: string;
@@ -19,5 +26,33 @@ export function mapSavedAnalysisRecord(record: SavedAnalysisRow): SavedAnalysis 
     channelName: record.channel_name,
     metrics: record.metrics,
     analyzedAt: record.analyzed_at,
+  };
+}
+
+interface SavedChannelRow {
+  id: string;
+  channel_id: string;
+  channel_name: string;
+  channel_avatar: string;
+  subscriber_count: number;
+  video_count: number;
+  videos: LabeledVideo[];
+  content_types: ContentTypeBreakdown[];
+  ai_analysis: AiAnalysis;
+  saved_at: string;
+}
+
+export function mapSavedChannelRecord(record: SavedChannelRow): SavedChannel {
+  return {
+    id: record.id,
+    channelId: record.channel_id,
+    channelName: record.channel_name,
+    channelAvatar: record.channel_avatar,
+    subscriberCount: record.subscriber_count,
+    videoCount: record.video_count,
+    videos: record.videos,
+    contentTypes: record.content_types,
+    aiAnalysis: record.ai_analysis,
+    savedAt: record.saved_at,
   };
 }

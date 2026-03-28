@@ -24,12 +24,22 @@ export function formatScore(n: number): string {
   return `${Math.round(n)}/100`;
 }
 
+const ISO_8601_DURATION = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+
+function parseIsoParts(iso: string): { hours: number; minutes: number; seconds: number } | null {
+  const match = iso.match(ISO_8601_DURATION);
+  if (!match) return null;
+  return {
+    hours: parseInt(match[1] || "0", 10),
+    minutes: parseInt(match[2] || "0", 10),
+    seconds: parseInt(match[3] || "0", 10),
+  };
+}
+
 export function formatDuration(iso: string): string {
-  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return iso;
-  const hours = parseInt(match[1] || "0", 10);
-  const minutes = parseInt(match[2] || "0", 10);
-  const seconds = parseInt(match[3] || "0", 10);
+  const parts = parseIsoParts(iso);
+  if (!parts) return iso;
+  const { hours, minutes, seconds } = parts;
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
@@ -37,12 +47,9 @@ export function formatDuration(iso: string): string {
 }
 
 export function parseDurationToSeconds(iso: string): number {
-  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return 0;
-  const hours = parseInt(match[1] || "0", 10);
-  const minutes = parseInt(match[2] || "0", 10);
-  const seconds = parseInt(match[3] || "0", 10);
-  return hours * 3600 + minutes * 60 + seconds;
+  const parts = parseIsoParts(iso);
+  if (!parts) return 0;
+  return parts.hours * 3600 + parts.minutes * 60 + parts.seconds;
 }
 
 const YOUTUBE_URL_PATTERNS = [
@@ -59,7 +66,7 @@ export function extractVideoId(url: string): string | null {
   return null;
 }
 
-type ChannelIdentifier = {
+export type ChannelIdentifier = {
   type: "handle" | "id" | "custom";
   value: string;
 };

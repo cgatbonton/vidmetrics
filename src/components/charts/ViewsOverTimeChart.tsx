@@ -22,9 +22,11 @@ interface DataPoint {
 
 const CHART_WIDTH = 800;
 const CHART_HEIGHT = 300;
-const PADDING = { top: 30, right: 30, bottom: 50, left: 70 };
+const PADDING = { top: 30, right: 30, bottom: 50, left: 70 } as const;
 const PLOT_WIDTH = CHART_WIDTH - PADDING.left - PADDING.right;
 const PLOT_HEIGHT = CHART_HEIGHT - PADDING.top - PADDING.bottom;
+const DATE_INPUT_CLASS =
+  'bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[rgba(201,103,232,0.4)] focus:ring-1 focus:ring-[rgba(201,103,232,0.2)] focus:outline-none [color-scheme:dark]';
 
 function formatDateShort(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -51,7 +53,13 @@ export function ViewsOverTimeChart({
   const publishDate = useMemo(() => new Date(publishedAt), [publishedAt]);
   const today = useMemo(() => new Date(), []);
 
-  const [fromDate, setFromDate] = useState(() => formatDateInput(publishDate));
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  const [fromDate, setFromDate] = useState(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const defaultFrom = thirtyDaysAgo > publishDate ? thirtyDaysAgo : publishDate;
+    return formatDateInput(defaultFrom);
+  });
   const [toDate, setToDate] = useState(() => formatDateInput(today));
 
   const dataPoints: DataPoint[] = useMemo(() => {
@@ -139,15 +147,15 @@ export function ViewsOverTimeChart({
     return `${linePath} L${xScale(last.date)},${baseline} L${xScale(first.date)},${baseline} Z`;
   }, [dataPoints, linePath, xScale]);
 
-  const handleFromChange = (value: string) => {
-    setFromDate(value);
-    onDateRangeChange(value, toDate);
-  };
-
-  const handleToChange = (value: string) => {
-    setToDate(value);
-    onDateRangeChange(fromDate, value);
-  };
+  function handleDateChange(field: 'from' | 'to', value: string): void {
+    if (field === 'from') {
+      setFromDate(value);
+      onDateRangeChange(value, toDate);
+    } else {
+      setToDate(value);
+      onDateRangeChange(fromDate, value);
+    }
+  }
 
   const containerProps = reduced
     ? {}
@@ -160,8 +168,6 @@ export function ViewsOverTimeChart({
           ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
         },
       };
-
-  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
   return (
     <motion.div {...containerProps}>
@@ -177,8 +183,8 @@ export function ViewsOverTimeChart({
                 type="date"
                 value={fromDate}
                 max={toDate}
-                onChange={(e) => handleFromChange(e.target.value)}
-                className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[rgba(201,103,232,0.4)] focus:ring-1 focus:ring-[rgba(201,103,232,0.2)] focus:outline-none [color-scheme:dark]"
+                onChange={(e) => handleDateChange('from', e.target.value)}
+                className={DATE_INPUT_CLASS}
               />
             </label>
             <label className="flex items-center gap-2">
@@ -187,8 +193,8 @@ export function ViewsOverTimeChart({
                 type="date"
                 value={toDate}
                 min={fromDate}
-                onChange={(e) => handleToChange(e.target.value)}
-                className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[rgba(201,103,232,0.4)] focus:ring-1 focus:ring-[rgba(201,103,232,0.2)] focus:outline-none [color-scheme:dark]"
+                onChange={(e) => handleDateChange('to', e.target.value)}
+                className={DATE_INPUT_CLASS}
               />
             </label>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
@@ -38,48 +38,22 @@ export function AnalyticsModal({ isOpen, onClose, analysis }: AnalyticsModalProp
               className="w-full rounded-xl aspect-video object-cover"
             />
             <div className="grid grid-cols-2 gap-3">
-              <GlassCard className="p-3">
-                <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Views</p>
-                <div className="text-xl font-bold font-mono text-white mt-1">
-                  <AnimatedCounter target={data.viewCount} formatter={formatCompact} />
-                </div>
-              </GlassCard>
-              <GlassCard className="p-3">
-                <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Likes</p>
-                <div className="text-xl font-bold font-mono text-white mt-1">
-                  <AnimatedCounter target={data.likeCount} formatter={formatCompact} />
-                </div>
-              </GlassCard>
-              <GlassCard className="p-3">
-                <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Comments</p>
-                <div className="text-xl font-bold font-mono text-white mt-1">
-                  <AnimatedCounter target={data.commentCount} formatter={formatCompact} />
-                </div>
-              </GlassCard>
-              <GlassCard className="p-3">
-                <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Views/Day</p>
-                <div className="text-xl font-bold font-mono text-white mt-1">
-                  <AnimatedCounter target={data.viewsPerDay} formatter={formatCompact} />
-                </div>
-              </GlassCard>
-              <GlassCard className="p-3">
-                <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Like Ratio</p>
-                <div className="text-xl font-bold font-mono text-white mt-1">
-                  <AnimatedCounter target={data.likeRatio} formatter={formatPercent} />
-                </div>
-              </GlassCard>
-              <GlassCard className="p-3">
-                <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Engagement</p>
-                <div className="text-xl font-bold font-mono text-white mt-1">
-                  <AnimatedCounter target={data.engagementRate} formatter={formatPercent} />
-                </div>
-              </GlassCard>
-              <GlassCard className="p-3">
-                <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Content Score</p>
-                <div className="text-xl font-bold font-mono text-white mt-1">
-                  <AnimatedCounter target={data.contentScore} formatter={formatScore} />
-                </div>
-              </GlassCard>
+              {[
+                { label: 'Views', value: data.viewCount, formatter: formatCompact },
+                { label: 'Likes', value: data.likeCount, formatter: formatCompact },
+                { label: 'Comments', value: data.commentCount, formatter: formatCompact },
+                { label: 'Views/Day', value: data.viewsPerDay, formatter: formatCompact },
+                { label: 'Like Ratio', value: data.likeRatio, formatter: formatPercent },
+                { label: 'Engagement', value: data.engagementRate, formatter: formatPercent },
+                { label: 'Content Score', value: data.contentScore, formatter: formatScore },
+              ].map((metric) => (
+                <GlassCard key={metric.label} className="p-3">
+                  <p className="text-xs font-medium text-white/50 uppercase tracking-wider">{metric.label}</p>
+                  <div className="text-xl font-bold font-mono text-white mt-1">
+                    <AnimatedCounter target={metric.value} formatter={metric.formatter} />
+                  </div>
+                </GlassCard>
+              ))}
               <GlassCard className="p-3">
                 <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Duration</p>
                 <div className="text-xl font-bold font-mono text-white mt-1">

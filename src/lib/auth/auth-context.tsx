@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { PENDING_SAVE_FLAG } from '@/lib/pending-saves';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextValue {
@@ -35,10 +36,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setIsLoading(false);
+
+      if (event === 'SIGNED_IN' && newSession?.user) {
+        try {
+          const hasPending = localStorage.getItem(PENDING_SAVE_FLAG);
+          if (hasPending) {
+            localStorage.removeItem(PENDING_SAVE_FLAG);
+            fetch('/api/pending-saves/claim', { method: 'POST' }).catch(() => {});
+          }
+        } catch {}
+      }
     });
 
     return () => subscription.unsubscribe();

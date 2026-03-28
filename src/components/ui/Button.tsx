@@ -42,20 +42,16 @@ export function Button({
       className={cn(
         variants[variant],
         sizes[size],
-        isDisabled && 'opacity-50 cursor-not-allowed',
+        isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
         className
       )}
       disabled={isDisabled}
       {...props}
     >
-      {loading ? (
-        <span className="flex items-center justify-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          {children}
-        </span>
-      ) : (
-        children
-      )}
+      <span className="flex items-center justify-center gap-2">
+        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {children}
+      </span>
     </button>
   );
 }

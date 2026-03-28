@@ -2,8 +2,17 @@
 
 import { useState, useCallback } from 'react';
 import type { SavedAnalysis, VideoAnalysis } from '@/types/analysis';
+import type { StructuredError, SaveResult } from '@/types/api';
 
-export function useSaves() {
+interface UseSavesReturn {
+  saves: SavedAnalysis[];
+  isLoading: boolean;
+  error: string | null;
+  fetchSaves: () => Promise<void>;
+  saveAnalysis: (analysis: VideoAnalysis) => Promise<SaveResult<SavedAnalysis>>;
+}
+
+export function useSaves(): UseSavesReturn {
   const [saves, setSaves] = useState<SavedAnalysis[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +35,7 @@ export function useSaves() {
     }
   }, []);
 
-  const saveAnalysis = useCallback(async (analysis: VideoAnalysis) => {
+  const saveAnalysis = useCallback(async (analysis: VideoAnalysis): Promise<SaveResult<SavedAnalysis>> => {
     const res = await fetch('/api/saves', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -39,8 +48,10 @@ export function useSaves() {
       }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.reason || 'Failed to save');
-    return data.entity;
+    if (!res.ok) {
+      return { entity: null, error: data.error as StructuredError, nextActions: [] };
+    }
+    return { entity: data.entity, error: null, nextActions: data.nextActions ?? [] };
   }, []);
 
   return { saves, isLoading, error, fetchSaves, saveAnalysis };

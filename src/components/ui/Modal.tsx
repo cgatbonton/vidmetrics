@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
@@ -16,21 +16,23 @@ interface ModalProps {
 export function Modal({ isOpen, onClose, children, title }: ModalProps) {
   const reduced = useReducedMotion();
   const [mounted, setMounted] = useState(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    if (!isOpen) return;
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
+    function handleEscape(e: KeyboardEvent): void {
+      if (e.key === 'Escape') onCloseRef.current();
     }
-  }, [isOpen, onClose]);
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
 
   if (!mounted) return null;
 
@@ -56,12 +58,12 @@ export function Modal({ isOpen, onClose, children, title }: ModalProps) {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xl z-50 flex justify-center items-start overflow-y-auto"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xl z-50 flex justify-center items-center overflow-y-auto"
           onClick={onClose}
           {...overlayMotionProps}
         >
           <motion.div
-            className="relative bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/5 rounded-2xl p-6 max-w-lg w-full mx-auto my-[10vh] h-fit z-[51]"
+            className="relative bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/5 rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[calc(100vh-4rem)] overflow-y-auto z-[51]"
             onClick={(e) => e.stopPropagation()}
             {...motionProps}
           >

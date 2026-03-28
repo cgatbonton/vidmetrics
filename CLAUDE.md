@@ -1,20 +1,72 @@
-# CLAUDE.md — [Project Name]
+# CLAUDE.md — VidMetrics
 
 ## Project Overview
 
-<!-- Fill in: What this project does, who it's for -->
+YouTube channel analytics tool. Paste a channel URL, get scored video performance metrics (VMS scores), content type breakdowns, and AI-powered strategy analysis. Users can save channel analyses to their account for later reference.
 
 ## Tech Stack
 
-<!-- Fill in: Framework, language, database, styling, deployment, etc. -->
+- **Framework**: Next.js 16 (App Router) with React 19
+- **Language**: TypeScript 5
+- **Database**: Supabase (Postgres + Auth + RLS)
+- **Styling**: Tailwind CSS 4
+- **Animation**: `motion/react` (Framer Motion)
+- **Icons**: `lucide-react`
+- **AI**: OpenAI (content analysis via `src/lib/openai.ts`)
+- **Video**: HLS.js for video playback
 
 ## Project Structure
 
-<!-- Fill in: Directory tree with descriptions -->
+```
+src/
+├── app/                    # Next.js App Router pages & API routes
+│   ├── api/
+│   │   ├── analyze/        # POST — channel analysis endpoint
+│   │   ├── saved-channels/ # GET/POST — saved channel analyses
+│   │   ├── saves/          # GET/POST — saved video analyses (legacy)
+│   │   ├── snapshots/      # Metric snapshots over time
+│   │   ├── register/       # User registration
+│   │   ├── login/          # User login
+│   │   └── logout/         # User logout
+│   ├── dashboard/          # Authenticated dashboard (saved analyses)
+│   ├── analytics/          # Analytics detail views
+│   └── settings/           # User settings
+├── components/
+│   ├── auth/               # AuthForm, AuthModal
+│   ├── channel/            # VideoGrid, VideoTile, VideoToolbar, VideoDetailModal
+│   ├── charts/             # EngagementRadar, ViewsOverTimeChart
+│   ├── dashboard/          # AnalyticsModal, SavedAnalysisTile
+│   ├── landing/            # Hero, UrlInput, AnalyticsSection
+│   ├── layout/             # Navbar, Footer
+│   └── ui/                 # Button, Modal, Toast (shared primitives)
+├── hooks/                  # useAnalyze, useSavedChannels, useSaves, useSnapshots, etc.
+├── lib/
+│   ├── auth/               # get-actor.ts, auth-context.tsx
+│   ├── db/                 # mappers.ts (DB row → domain object)
+│   ├── supabase/           # client.ts, server.ts (browser/server Supabase clients)
+│   ├── metrics.ts          # VMS score computation
+│   ├── youtube.ts          # YouTube Data API integration
+│   ├── ai-analysis.ts      # AI-powered content analysis
+│   ├── content-types.ts    # Content type classification
+│   ├── errors.ts           # Structured error definitions
+│   ├── audit.ts            # Audit logging
+│   └── events.ts           # Event emission
+├── types/
+│   ├── analysis.ts         # VideoAnalysis, ChannelAnalysis, ScoredVideo, SavedChannel
+│   └── api.ts              # Actor, StructuredError
+└── middleware.ts            # Route protection (dashboard, settings, analytics)
+supabase/
+└── migrations/             # SQL migrations (run in Supabase SQL Editor)
+```
 
 ## Key Commands
 
-<!-- Fill in: dev, build, lint, test commands -->
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npx tsc --noEmit` | Type check |
 
 ## Testing Conventions
 
@@ -40,7 +92,16 @@ Every test must verify **observable behavior** (inputs → outputs, state transi
 
 ### File Naming
 
-<!-- Fill in: Project-specific naming conventions -->
+- **Components**: PascalCase (`VideoGrid.tsx`, `AuthModal.tsx`)
+- **Hooks**: camelCase with `use` prefix (`useAnalyze.ts`, `useSavedChannels.ts`)
+- **Lib modules**: kebab-case (`ai-analysis.ts`, `content-types.ts`)
+- **API routes**: kebab-case directories (`saved-channels/route.ts`)
+- **Types**: camelCase files, PascalCase exports (`analysis.ts` → `ChannelAnalysis`)
+
+### Type Ownership — One Definition, One Location
+- A shared type belongs in the module that produces or parses the data it describes.
+- All consumers import from that single source. Never define the same interface or type in two files in the same directory tree.
+- Before defining a new type, grep `src/types/` and the relevant domain module to confirm it doesn't already exist under a different name.
 
 ## Design System
 
@@ -185,15 +246,10 @@ When you notice the same class of bug recurring (3+ occurrences), create a **gua
 
 ## Feature-Specific Instructions (auto-loaded by directory)
 
-<!--
-Add entries here as CLAUDE.md files are created in subdirectories:
-
-| Directory | CLAUDE.md Path |
-|-----------|---------------|
-| `src/api/` | `src/api/CLAUDE.md` |
-| `src/components/` | `src/components/CLAUDE.md` |
+| Directory | Reference |
+|-----------|-----------|
 | Agent-First patterns | `.claude/skills/agent-first/` |
--->
+| Design system | `.claude/brand-book.md` |
 
 ## Living Documentation — CLAUDE.md Maintenance
 
@@ -234,3 +290,90 @@ Write to the **nearest** CLAUDE.md in the directory tree:
 3. **Architectural rule** — Was a stable rule confirmed or violated? → Update the appropriate file.
 
 **Skipping step 1 without justification is a failure.**
+
+## Integration & Runtime Gotchas
+
+### Git Worktree Checkout Destroys Untracked Files
+- `git checkout` into a worktree path destroys any untracked files in that path — they are not protected by git and cannot be recovered.
+- Before any checkout or worktree operation, run `git status` to confirm no untracked files exist in the target path.
+
+### `Promise.all` for Independent Async Fetches (Non-Negotiable)
+- Two or more `await` calls with no data dependency between them must always be `Promise.all`. Sequential awaits on independent calls is a performance bug.
+- Wrong: `const a = await fetchA(); const b = await fetchB();`
+- Correct: `const [a, b] = await Promise.all([fetchA(), fetchB()]);`
+
+### `AnimatePresence` Required for `motion` Exit Animations
+- `exit` props on `motion` elements are silently ignored without an `AnimatePresence` wrapper. The element unmounts immediately with no animation.
+- Every component that uses `exit` variants must wrap the conditionally-rendered `motion` element in `AnimatePresence`.
+
+### `VmsVideoInput.duration` Must Be ISO 8601
+- `computeVmsScores` in `src/lib/metrics.ts` calls `formatDuration` internally. The `duration` field must be a raw ISO 8601 string (e.g. `"PT12M34S"`).
+- Never pre-format duration to a human-readable string before passing into `VmsVideoInput`. The scorer owns the formatting step.
+
+### SSR Guard for `createPortal`
+- `createPortal(children, document.body)` crashes during SSR — `document` is undefined on the server even for `'use client'` components during hydration.
+- Every component that calls `createPortal` must guard with a `mounted` state:
+  ```tsx
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+  ```
+
+### Callback Props in `useEffect` — Use a Ref
+- Never include callback props in `useEffect` dependency arrays. New function identity on parent re-renders causes extra effect runs or infinite loops.
+- Pattern: store the callback in a ref and call it from inside the effect:
+  ```ts
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+  // inside effect:
+  callbackRef.current(result);
+  ```
+
+### Auth Helpers Must Return Null, Not Throw
+- Auth helpers that check session state must return `null` for unauthenticated callers — never throw.
+- Throwing masks infrastructure failures (auth service down, network error) and prevents callers from distinguishing "not logged in" from "auth broken".
+- Use `getAuthenticatedActor()` → returns `Actor | null`. The route owns the 401 response.
+
+### Actor Identity Predicates Live in `src/lib/auth/get-actor.ts`
+- Never inline `actor.type === "system" && actor.id === "anonymous"` in route files.
+- All actor predicates (`isAnonymous`, etc.) are exported from `src/lib/auth/get-actor.ts`.
+
+### DB Record Mappers Live in `src/lib/db/mappers.ts`
+- All Supabase record → domain object transforms go in `src/lib/db/mappers.ts`.
+- Extract at the second callsite — inlining in 3+ places causes field-level drift.
+
+### UI Must Not Own API Request Body Shape
+- UI components must never construct API request bodies directly.
+- All mutations route through a dedicated hook (e.g. `useSaves.saveAnalysis`) that owns the canonical request shape.
+- This prevents silent field-name mismatches between the caller and the route's validation schema.
+
+### Supabase `getUser()` vs `getSession()` — Know the Difference
+- `getUser()` makes a network call to validate the JWT with Supabase. Use it when granting access to a resource (auth helpers, protected routes).
+- `getSession()` reads the session cookie locally — no network call. Use it when you only need the user ID from an already-established session (e.g., attributing an audit log on logout).
+- Never use `getSession()` alone for trusted auth checks — it reads unvalidated local storage. Never use `getUser()` where a cookie read suffices — it adds network latency.
+- After a server-side `signOut()`, the client must call `window.location.reload()` (or redirect) to flush the in-memory auth state. The auth context only re-initializes from cookies on mount.
+
+### `localStorage` vs `sessionStorage` for Cross-Tab Signals
+- `sessionStorage` is scoped to the originating tab. A flag set in one tab is invisible in any other tab — including a tab opened from an email confirmation link.
+- When a flag must be readable after the user switches tabs (e.g., clicks an email link in a new tab), use `localStorage`.
+- Use `sessionStorage` only for transient, single-tab state that should not persist across navigation or tab switches.
+
+### Supabase `SIGNED_IN` Event Fires in All Open Tabs
+- `onAuthStateChange` emits `SIGNED_IN` in every open tab when the user confirms their email or logs in — not just in the tab that triggered the action.
+- This makes it the correct hook for triggering post-confirmation side effects (e.g., claiming pending server-side data). The claim fires regardless of which tab the user confirmed from.
+- `USER_UPDATED` also fires on confirmation but does not reliably signal a completed sign-in state across all Supabase versions.
+
+### Pre-Auth Server-Side Pending Row Pattern
+- When a user triggers a save action before email confirmation, browser state (sessionStorage, in-memory) cannot hold the data — any tab close or navigation loses it.
+- Correct pattern: (1) store the pending data server-side at registration time, keyed by the user's email; (2) set a `localStorage` flag so all tabs know to claim; (3) call the claim endpoint on the `SIGNED_IN` auth event; (4) TTL-delete stale unclaimed rows on every claim pass.
+- Never thread pending data through URL params, sessionStorage, or client state across the email confirmation boundary.
+
+### RLS for Pre-Auth Inserts with Post-Auth Owner Restriction
+- Tables that need to accept server-side inserts before the user has a confirmed session (e.g., `pending_saves`) but must restrict reads and deletes to the confirmed owner use a split policy:
+  - INSERT: `WITH CHECK (true)` — the API route owns the validation, not RLS.
+  - SELECT/DELETE: `USING (email = (SELECT email FROM auth.users WHERE id = auth.uid()))` — joins the row's email against the confirmed user.
+- Never rely on RLS alone to validate pre-auth inserts. The server route must validate the payload shape before inserting.
+
+### Validate Client-Supplied JSONB Blobs at the Route Boundary
+- Supabase will accept any valid JSON into a JSONB column. A malformed domain object stored as JSONB only surfaces as a runtime error at read/claim time, not at write time.
+- Always validate required fields of any client-supplied JSONB payload at the API route boundary before inserting. Drop invalid blobs silently rather than storing unclaimable data.

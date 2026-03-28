@@ -42,12 +42,16 @@ const AXES = [
 
 const SVG_SIZE = 400;
 const CENTER = SVG_SIZE / 2;
-const RADIUS = 130;
+const RADIUS = 100;
 const GRID_LEVELS = [20, 40, 60, 80, 100];
 const AXIS_COUNT = AXES.length;
 
+function axisAngle(axisIndex: number): number {
+  return (2 * Math.PI * axisIndex) / AXIS_COUNT - Math.PI / 2;
+}
+
 function getPoint(axisIndex: number, value: number): { x: number; y: number } {
-  const angle = (2 * Math.PI * axisIndex) / AXIS_COUNT - Math.PI / 2;
+  const angle = axisAngle(axisIndex);
   const r = (value / 100) * RADIUS;
   return {
     x: CENTER + r * Math.cos(angle),
@@ -62,10 +66,6 @@ function polygonPoints(values: number[]): string {
       return `${x},${y}`;
     })
     .join(' ');
-}
-
-function getAngle(axisIndex: number): number {
-  return (2 * Math.PI * axisIndex) / AXIS_COUNT - Math.PI / 2;
 }
 
 export function EngagementRadar({ scores }: EngagementRadarProps) {
@@ -92,7 +92,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
           Performance Profile
         </p>
         <div className="flex justify-center">
-          <div className="relative w-full max-w-sm sm:max-w-md">
+          <div className="relative w-full max-w-sm sm:max-w-md overflow-hidden">
             {/* SVG radar chart */}
             <svg
               viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
@@ -102,17 +102,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
             >
               <defs>
                 <linearGradient
-                  id="radar-stroke-gradient"
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor="#FA93FA" />
-                  <stop offset="100%" stopColor="#983AD6" />
-                </linearGradient>
-                <linearGradient
-                  id="radar-dot-gradient"
+                  id="radar-gradient"
                   x1="0%"
                   y1="0%"
                   x2="100%"
@@ -154,7 +144,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
               <polygon
                 points={polygonPoints(animated)}
                 fill="rgba(201,103,232,0.12)"
-                stroke="url(#radar-stroke-gradient)"
+                stroke="url(#radar-gradient)"
                 strokeWidth="2"
                 strokeLinejoin="round"
               />
@@ -168,7 +158,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
                     cx={x}
                     cy={y}
                     r={4}
-                    fill="url(#radar-dot-gradient)"
+                    fill="url(#radar-gradient)"
                   />
                 );
               })}
@@ -176,7 +166,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
 
             {/* HTML labels positioned over the SVG */}
             {AXES.map((axis, i) => {
-              const angle = getAngle(i);
+              const angle = axisAngle(i);
               const labelRadius = RADIUS + 36;
               const xPct = ((CENTER + labelRadius * Math.cos(angle)) / SVG_SIZE) * 100;
               const yPct = ((CENTER + labelRadius * Math.sin(angle)) / SVG_SIZE) * 100;

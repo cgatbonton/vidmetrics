@@ -1,7 +1,7 @@
-import type { ScoredVideo } from "@/types/analysis";
-import type { ContentTypeBreakdown } from "@/types/analysis";
+import type { ScoredVideo, LabeledVideo, ContentTypeBreakdown } from "@/types/analysis";
 
 const SHORTS_MAX_SECONDS = 62;
+const PODCAST_MIN_SECONDS = 45 * 60; // 45 minutes
 
 const KEYWORD_RULES: { type: string; patterns: RegExp[] }[] = [
   {
@@ -38,6 +38,12 @@ const KEYWORD_RULES: { type: string; patterns: RegExp[] }[] = [
       /\bfeat\.?\b/i,
       /\bft\.?\b/i,
       /\bw\/\s/i,
+      /[|#]\s*\d{2,}/,        // "#123" or "| 47" episode numbering
+      /\bguest\b/i,
+      /\bQ\s*&\s*A\b/i,
+      /\bfull (episode|conversation|interview)\b/i,
+      /\blive (stream|show|session)\b/i,
+      /\bclips?\b/i,
     ],
   },
   {
@@ -97,13 +103,17 @@ function classifySingleVideo(video: ScoredVideo): string {
     }
   }
 
+  if (video.durationSeconds >= PODCAST_MIN_SECONDS) {
+    return "Podcast / Interview";
+  }
+
   return "Other";
 }
 
 export function classifyContentTypes(
   videos: ScoredVideo[]
-): { labeledVideos: (ScoredVideo & { contentType: string })[]; breakdown: ContentTypeBreakdown[] } {
-  const labeled = videos.map((v) => ({
+): { labeledVideos: LabeledVideo[]; breakdown: ContentTypeBreakdown[] } {
+  const labeled: LabeledVideo[] = videos.map((v) => ({
     ...v,
     contentType: classifySingleVideo(v),
   }));

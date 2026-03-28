@@ -1,15 +1,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { ChannelAnalysis } from '@/types/analysis';
-
-interface AnalysisConstraints {
-  canSave: boolean;
-}
+import type { ChannelAnalysis, AnalysisConstraints } from '@/types/analysis';
 
 interface UseAnalyzeReturn {
   data: ChannelAnalysis | null;
   constraints: AnalysisConstraints | null;
+  nextActions: string[];
   error: string | null;
   isLoading: boolean;
   analyze: (url: string) => Promise<void>;
@@ -19,14 +16,20 @@ interface UseAnalyzeReturn {
 export function useAnalyze(): UseAnalyzeReturn {
   const [data, setData] = useState<ChannelAnalysis | null>(null);
   const [constraints, setConstraints] = useState<AnalysisConstraints | null>(null);
+  const [nextActions, setNextActions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const analyze = useCallback(async (url: string) => {
-    setIsLoading(true);
-    setError(null);
+  function clearState(): void {
     setData(null);
     setConstraints(null);
+    setNextActions([]);
+    setError(null);
+  }
+
+  const analyze = useCallback(async (url: string) => {
+    setIsLoading(true);
+    clearState();
 
     try {
       const response = await fetch('/api/analyze', {
@@ -42,6 +45,7 @@ export function useAnalyze(): UseAnalyzeReturn {
         if (entity?.channel && entity?.videos) {
           setData(entity);
           setConstraints(json.constraints ?? { canSave: false });
+          setNextActions(json.nextActions ?? []);
         } else {
           setError('Please enter a YouTube channel URL (e.g. youtube.com/@channelname)');
         }
@@ -55,11 +59,7 @@ export function useAnalyze(): UseAnalyzeReturn {
     }
   }, []);
 
-  const reset = useCallback(() => {
-    setData(null);
-    setConstraints(null);
-    setError(null);
-  }, []);
+  const reset = useCallback(clearState, []);
 
-  return { data, constraints, error, isLoading, analyze, reset };
+  return { data, constraints, nextActions, error, isLoading, analyze, reset };
 }

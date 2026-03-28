@@ -2,71 +2,61 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { emitEvent } from "@/lib/events";
 import { auditLog } from "@/lib/audit";
-import { createErrorResponse } from "@/lib/errors";
+import { errorResponse } from "@/lib/errors";
+import type { Actor } from "@/types/api";
 
-export async function POST(req: Request) {
-  const actor = { type: "system" as const, id: "registration" };
+const REGISTRATION_ACTOR: Actor = { type: "system", id: "registration" };
+const MIN_PASSWORD_LENGTH = 8;
 
-  let body: { email?: string; password?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return createErrorResponse(
-      "VALIDATION_ERROR",
-      "Invalid request body",
-      "Send a JSON body with email and password",
-      400
-    );
+export async function POST(req: Request): Promise<Response> {
+  const body = await req.json().catch(() => null);
+
+  if (!body?.email || !body?.password) {
+    return errorResponse("VALIDATION_ERROR");
   }
 
-  const { email, password } = body;
-
-  if (!email || !password) {
-    return createErrorResponse(
-      "VALIDATION_ERROR",
-      "Email and password are required",
-      "Provide both email and password fields",
-      400
-    );
+  if (body.password.length < MIN_PASSWORD_LENGTH) {
+    return errorResponse("PASSWORD_TOO_SHORT");
   }
 
-  if (password.length < 8) {
-    return createErrorResponse(
-      "VALIDATION_ERROR",
-      "Password must be at least 8 characters",
-      "Choose a longer password",
-      400
-    );
-  }
+  const rawPending = body.pendingAnalysis;
+  const pendingAnalysis =
+    rawPending?.channel?.channelId &&
+    rawPending?.channel?.channelName &&
+    rawPending?.channel?.channelAvatar &&
+    typeof rawPending?.channel?.subscriberCount === 'number' &&
+    typeof rawPending?.channel?.videoCount === 'number' &&
+    Array.isArray(rawPending?.videos) &&
+    rawPending?.contentTypes &&
+    rawPending?.aiAnalysis
+      ? rawPending
+      : null;
 
   const supabase = await createServerClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email: body.email,
+    password: body.password,
+  });
 
   if (error) {
-    const isAlreadyRegistered =
-      error.message?.toLowerCase().includes("already registered") ||
-      error.message?.toLowerCase().includes("already been registered");
-    if (isAlreadyRegistered) {
-      return createErrorResponse(
-        "EMAIL_TAKEN",
-        "An account with this email already exists",
-        "Try logging in instead, or use a different email",
-        409
-      );
+    const msg = error.message?.toLowerCase() ?? "";
+
+    if (msg.includes("already registered") || msg.includes("already been registered")) {
+      return errorResponse("EMAIL_TAKEN");
     }
-    return createErrorResponse(
-      "REGISTRATION_FAILED",
-      "Unable to create account",
-      "Check your email and password and try again",
-      400
-    );
+
+    if (msg.includes("rate limit") || error.status === 429) {
+      return errorResponse("RATE_LIMITED");
+    }
+
+    return errorResponse("REGISTRATION_FAILED");
   }
 
   const userId = data.user?.id ?? "unknown";
 
   await Promise.all([
     auditLog({
-      actor,
+      actor: REGISTRATION_ACTOR,
       action: "user.register",
       target: userId,
       outcome: { success: true },
@@ -76,6 +66,12 @@ export async function POST(req: Request) {
       entityId: userId,
       data: { registered: true },
     }),
+    ...(pendingAnalysis
+      ? [supabase.from("pending_saves").insert({
+          email: body.email,
+          channel_data: pendingAnalysis,
+        })]
+      : []),
   ]);
 
   return NextResponse.json({

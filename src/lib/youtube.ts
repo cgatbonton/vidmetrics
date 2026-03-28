@@ -1,4 +1,5 @@
 import type { VideoAnalysis } from "@/types/analysis";
+import type { ChannelIdentifier } from "@/lib/utils";
 import { formatDuration, parseDurationToSeconds } from "@/lib/utils";
 import {
   getCategoryName,
@@ -89,17 +90,10 @@ export async function fetchChannelData(
   const data: YouTubeListResponse<YouTubeChannelItem> = await res.json();
 
   if (!data.items || data.items.length === 0) {
-    throw new Error("Channel not found");
+    throw new Error("CHANNEL_NOT_FOUND");
   }
 
   return data.items[0];
-}
-
-// --- Channel resolution ---
-
-interface ChannelIdentifier {
-  type: "handle" | "id" | "custom";
-  value: string;
 }
 
 export async function resolveChannelId(
@@ -143,8 +137,6 @@ export async function resolveChannelId(
   throw new Error("CHANNEL_NOT_FOUND");
 }
 
-// --- Channel data with avatar ---
-
 interface ChannelWithAvatar {
   id: string;
   title: string;
@@ -175,19 +167,14 @@ export async function fetchChannelWithAvatar(
   };
 }
 
-// --- Fetch recent videos ---
-
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const VIDEO_BATCH_SIZE = 50;
-const DEFAULT_MAX_RESULTS = 25;
+const MAX_PLAYLIST_PAGES = 10; // Up to 500 playlist items
 
 export async function fetchRecentVideos(
-  channelId: string,
-  maxResults: number = DEFAULT_MAX_RESULTS
+  channelId: string
 ): Promise<YouTubeVideoItem[]> {
   const apiKey = getApiKey();
 
-  // Step 1: Get uploads playlist ID
   const channelUrl = `${YOUTUBE_API_BASE}/channels?part=contentDetails&id=${channelId}&key=${apiKey}`;
   const channelRes = await fetch(channelUrl);
   if (!channelRes.ok)
@@ -199,30 +186,31 @@ export async function fetchRecentVideos(
   const uploadsPlaylistId =
     channelData.items[0].contentDetails.relatedPlaylists.uploads;
 
-  // Step 2: Fetch playlist items (up to 50 to allow room after date filtering)
-  const playlistUrl = `${YOUTUBE_API_BASE}/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=${VIDEO_BATCH_SIZE}&key=${apiKey}`;
-  const playlistRes = await fetch(playlistUrl);
-  if (!playlistRes.ok)
-    throw new Error(`YouTube API responded with status ${playlistRes.status}`);
-  const playlistData = await playlistRes.json();
+  const allPlaylistItems: { snippet: { publishedAt: string; resourceId: { videoId: string } } }[] = [];
+  let nextPageToken: string | undefined;
 
-  if (!playlistData.items || playlistData.items.length === 0) return [];
+  for (let page = 0; page < MAX_PLAYLIST_PAGES; page++) {
+    const pageParam = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+    const playlistUrl = `${YOUTUBE_API_BASE}/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=${VIDEO_BATCH_SIZE}${pageParam}&key=${apiKey}`;
+    const playlistRes = await fetch(playlistUrl);
+    if (!playlistRes.ok)
+      throw new Error(`YouTube API responded with status ${playlistRes.status}`);
+    const playlistData = await playlistRes.json();
 
-  // Step 3: Filter to videos published in the last 30 days
-  const cutoff = Date.now() - THIRTY_DAYS_MS;
-  const recentItems = playlistData.items.filter(
-    (item: { snippet: { publishedAt: string } }) =>
-      new Date(item.snippet.publishedAt).getTime() >= cutoff
+    if (!playlistData.items || playlistData.items.length === 0) break;
+
+    allPlaylistItems.push(...playlistData.items);
+
+    nextPageToken = playlistData.nextPageToken;
+    if (!nextPageToken) break;
+  }
+
+  if (allPlaylistItems.length === 0) return [];
+
+  const videoIds: string[] = allPlaylistItems.map(
+    (item) => item.snippet.resourceId.videoId
   );
 
-  if (recentItems.length === 0) return [];
-
-  const videoIds: string[] = recentItems.map(
-    (item: { snippet: { resourceId: { videoId: string } } }) =>
-      item.snippet.resourceId.videoId
-  );
-
-  // Step 4: Batch fetch full video data in groups of 50
   const allVideos: YouTubeVideoItem[] = [];
   for (let i = 0; i < videoIds.length; i += VIDEO_BATCH_SIZE) {
     const batch = videoIds.slice(i, i + VIDEO_BATCH_SIZE);
@@ -235,7 +223,7 @@ export async function fetchRecentVideos(
     if (videosData.items) allVideos.push(...videosData.items);
   }
 
-  return allVideos.slice(0, maxResults);
+  return allVideos;
 }
 
 export function computeAnalysis(
