@@ -71,7 +71,8 @@ export function AuthForm({
       }
 
       if (mode === 'login') {
-        onSuccess();
+        window.location.reload();
+        return;
       } else {
         setConfirmationSent(true);
         onSignupConfirmation?.();
