@@ -250,6 +250,7 @@ When you notice the same class of bug recurring (3+ occurrences), create a **gua
 |-----------|-----------|
 | Agent-First patterns | `.claude/skills/agent-first/` |
 | Design system | `.claude/brand-book.md` |
+| Components | `src/components/CLAUDE.md` |
 
 ## Living Documentation — CLAUDE.md Maintenance
 
@@ -396,3 +397,36 @@ Write to the **nearest** CLAUDE.md in the directory tree:
 ### Call `getActor()` Once Per Request; Pass Actor as Parameter
 - Call `getActor()` exactly once at the top of the route handler. Pass the resolved `Actor` to any sub-handlers as a parameter.
 - Never call `getActor()` inside a helper that is invoked from a route that already resolved the actor — each call makes a Supabase JWT validation network request.
+
+### `useScrollLock` Must Save/Restore `overflow`, Never Hardcode `''`
+- When two overlays can both lock scroll (e.g., mobile nav + modal), a cleanup that resets `overflow` to `''` unlocks the body even if the other overlay is still open.
+- Capture `const original = document.body.style.overflow` at lock time and restore it on cleanup.
+- The shared hook lives at `src/hooks/useScrollLock.ts`. Never inline scroll-lock logic in a component.
+
+### Never Nest `<button>` Inside `<button>` — Use `div[role=button]` for Rows
+- Nested interactive elements are invalid HTML. Browsers hoist the inner element, breaking click behavior.
+- When a list row needs a primary click action plus a secondary action (e.g., delete icon), use `<div role="button" tabIndex={0} onKeyDown={...}>` for the row. Keep `<button>` only for the secondary action inside it.
+
+### Mobile Touch Targets: `min-h-[44px] sm:min-h-0`, Never Bare `min-h-[44px]`
+- Adding `min-h-[44px]` without a breakpoint override causes desktop layout regressions — toolbar rows grow and elements misalign.
+- Always scope the 44px minimum to mobile only: `min-h-[44px] sm:min-h-0`. The `sm:min-h-0` cancels the override above the small breakpoint.
+
+### SVG Tooltip Clipping — Ancestor `overflow-hidden` Clips Absolutely-Positioned HTML Overlays
+- HTML elements (tooltips, labels) positioned absolutely over an SVG are clipped by any ancestor with `overflow-hidden`, including parent GlassCard or container divs.
+- The immediate wrapper of the SVG + HTML overlay layer must be `overflow-visible`. Constrain labels with `max-w-[calc(100vw-Xrem)]` rather than relying on container clipping.
+
+### Two Components for Mobile/Desktop Interaction Model Differences
+- When an element needs fundamentally different interaction models on mobile vs. desktop (bottom sheet vs. sidebar, action sheet vs. dropdown), build two separate focused components.
+- Use Tailwind responsive visibility classes to switch between them (`hidden lg:block` / `lg:hidden`). Do not build one component that handles both via conditional internal logic — the animation, focus trap, and scroll-lock models diverge too much.
+
+### Audit Logs and Events Must Never Include PII
+- Never include PII (email, phone, name) in `auditLog` `outcome` or `emitEvent` `data` fields. Use opaque IDs only.
+- PII leakage through structured logging is easy to miss because the audit/event helpers look harmless — the risk is in what callers pass to them.
+
+### `.env.example` for Committed Placeholder Files
+- Committed placeholder/template env files must be named `.env.example`. Never use `.env` as a committed file — it is matched by the `.env*` gitignore glob.
+
+### `getSession()` for ID-Only Reads; `getUser()` for Validation
+- Use `getSession()` when you only need the user ID from an already-established server session (e.g., attributing an audit log on logout). No network call.
+- Use `getUser()` when you need to verify the token is valid before granting access to a resource. Network call to Supabase.
+- These are complementary, not competing — the distinction is validation need.

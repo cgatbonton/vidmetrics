@@ -67,7 +67,7 @@ export function VideoDetailModal({
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} size="2xl">
       <div className="max-w-2xl">
         <img
           src={video.thumbnailUrl}

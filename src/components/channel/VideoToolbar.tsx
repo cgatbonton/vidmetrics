@@ -62,7 +62,7 @@ interface VideoToolbarProps {
 }
 
 const selectClasses =
-  'appearance-none bg-white/[0.05] border border-white/10 rounded-lg py-2 pr-8 text-sm text-white/80 hover:bg-white/[0.08] hover:border-white/15 focus:border-[rgba(201,103,232,0.4)] focus:ring-1 focus:ring-[rgba(201,103,232,0.2)] focus:outline-none transition-colors cursor-pointer';
+  'appearance-none bg-white/[0.05] border border-white/10 rounded-lg py-2 pr-8 text-sm text-white/80 hover:bg-white/[0.08] hover:border-white/15 focus:border-[rgba(201,103,232,0.4)] focus:ring-1 focus:ring-[rgba(201,103,232,0.2)] focus:outline-none transition-colors cursor-pointer min-h-[44px] sm:min-h-0';
 
 const iconSelectClasses = `${selectClasses} pl-8`;
 
@@ -108,7 +108,7 @@ export function VideoToolbar({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <SlidersHorizontal className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
             <select
@@ -171,7 +171,7 @@ export function VideoToolbar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 text-xs text-white/40">
           <Calendar className="w-3.5 h-3.5" />
           Period:
@@ -180,7 +180,7 @@ export function VideoToolbar({
           <button
             key={opt.value}
             onClick={() => onDatePresetChange(opt.value)}
-            className={`border rounded-full px-3 py-1 text-xs transition-colors cursor-pointer ${
+            className={`border rounded-full px-3 py-1.5 min-h-[44px] sm:min-h-0 text-xs transition-colors cursor-pointer ${
               datePreset === opt.value
                 ? 'bg-white/10 text-white border-white/20'
                 : 'bg-white/[0.03] text-white/40 border-white/5 hover:bg-white/[0.06] hover:text-white/60'

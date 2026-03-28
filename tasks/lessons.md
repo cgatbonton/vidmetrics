@@ -8,7 +8,7 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Date**: 2026-03-27
 - **Source**: correction
 - **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Status**: graduated
 - **Lesson**: The register route was logging the user's email in the audit `outcome` field and the event `data` field. PII leakage through structured logging is easy to miss because the audit/event helpers look harmless — the risk is in what callers pass to them.
 - **Rule**: Never include PII (email, phone, name) in `auditLog` `outcome` or `emitEvent` `data` fields. Use opaque IDs only.
 
@@ -32,7 +32,7 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Date**: 2026-03-27
 - **Source**: discovery
 - **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Status**: graduated
 - **Lesson**: `.gitignore` uses a `.env*` glob pattern which matches `.env` itself — it cannot be committed. Using `.env` as the committed placeholder file for onboarding is silently swallowed by `.gitignore`. `.env.example` escapes the glob and can be committed safely.
 - **Rule**: Committed placeholder/template env files must be named `.env.example`. Never use `.env` as a committed file — it is matched by the `.env*` gitignore glob.
 
@@ -80,16 +80,16 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 ### Reset pagination when any filter changes
 - **Date**: 2026-03-27
 - **Source**: discovery
-- **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Target**: `src/components/CLAUDE.md`
+- **Status**: graduated
 - **Lesson**: VideoGrid tracks `visibleCount` for "load more" pagination independently from filter state. When a filter narrows results, `visibleCount` is stale — it can be larger than the new filtered set, causing the "Load More" button to disappear even though the user just filtered. The fix: reset `visibleCount` to `PAGE_SIZE` in every filter handler, not in `useMemo`.
 - **Rule**: When a component has independent pagination state (`visibleCount`) and filter state, every filter change handler must reset `visibleCount` to `PAGE_SIZE`. Never rely on `useMemo` to fix stale pagination — it recalculates the slice but doesn't reset the count.
 
 ### CSV export must reference the filtered list, not the raw input
 - **Date**: 2026-03-27
 - **Source**: discovery
-- **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Target**: `src/components/CLAUDE.md`
+- **Status**: graduated
 - **Lesson**: VideoGrid passes `filteredAndSorted` (the current view after all filters and sort) to `downloadCsv`, not the raw `videos` prop. Passing the raw array would silently export data the user can't see and bypass their active filter state.
 - **Rule**: Any export action (CSV, copy, share) must operate on the derived/filtered data that represents the user's current view, not the unfiltered source array. The user's expectation is "export what I'm looking at."
 
@@ -97,7 +97,7 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Date**: 2026-03-27
 - **Source**: discovery
 - **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Status**: graduated
 - **Lesson**: The logout route uses `getSession()` instead of `getUser()` to retrieve the user ID. `getUser()` makes a network call to Supabase to validate the JWT; `getSession()` reads the session cookie locally with no network round-trip. When a route only needs to identify who is logging out (not to validate their access to a resource), the network call is waste and adds latency.
 - **Rule**: Use `getSession()` when you only need the user ID from an already-established server session (e.g., to attribute an audit log on logout). Use `getUser()` when you need to verify the token is valid before granting access to a resource. These are complementary, not competing — the distinction is validation need, not security.
 
@@ -105,7 +105,7 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Date**: 2026-03-27
 - **Source**: discovery
 - **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Status**: graduated
 - **Lesson**: Calling `supabase.auth.signOut()` on the server side clears the server-side session cookies, but the browser's in-memory auth state (held by the Supabase client and React auth context) is not notified. The client continues to render as authenticated until a full page reload forces re-hydration of auth state from the now-cleared cookies.
 - **Rule**: After a server-side Supabase `signOut()`, the client must call `window.location.reload()` (or redirect) to sync browser auth state. Optimistic client-side state updates alone are insufficient — the auth context re-initializes from cookies only on mount.
 
@@ -160,32 +160,32 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 ### Infer auth state from 401 response, not from auth context
 - **Date**: 2026-03-27
 - **Source**: pattern
-- **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Target**: `src/components/CLAUDE.md`
+- **Status**: graduated
 - **Lesson**: `VideoAiAnalysisPanel` is mounted inside `VideoDetailModal`, which is accessible to anonymous users on the landing page. Importing the auth context to show/hide the generate button would couple the modal to an auth provider not always present. Instead, `useVideoAiAnalysis` fires the API request and sets `isAuthenticated = false` on receiving a 401. The component renders a "Sign in" prompt based on that derived state — no auth context import needed.
 - **Rule**: When a component is accessible to both anonymous and authenticated users, derive auth state from API response codes (401 → not authenticated) rather than importing the auth context. This avoids coupling the component to an auth provider it may not always be wrapped in.
 
 ### Deduplication guard for concurrent callbacks must use a ref, not state
 - **Date**: 2026-03-27
 - **Source**: pattern
-- **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Target**: `src/components/CLAUDE.md`
+- **Status**: graduated
 - **Lesson**: The `generate` callback in `useVideoAiAnalysis` uses an `isGeneratingRef` (a ref, not state) as a double-click deduplication guard. A ref is used instead of the `isGenerating` state flag because `useCallback` with an empty dep array captures a stale closure — the closure always sees the initial state value. A ref is always current regardless of closure age.
 - **Rule**: When a `useCallback` with an empty dep array needs to guard against concurrent invocations (e.g., double-click), use a `useRef` flag rather than a state variable. State captured in a stable callback closure is stale; a ref is always live.
 
 ### `parseAiJson` two-pass strategy handles unpredictable AI markdown wrapping
 - **Date**: 2026-03-27
 - **Source**: discovery
-- **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Target**: `src/components/CLAUDE.md`
+- **Status**: graduated
 - **Lesson**: AI models frequently wrap JSON output in markdown code fences (` ```json ... ``` `) even when the prompt explicitly says "no code fences." `parseAiJson` in `src/lib/ai-utils.ts` handles this with a two-pass strategy: (1) attempt `JSON.parse` on the raw string; (2) if that fails, strip markdown fence syntax and retry. This makes all AI JSON parsing resilient without duplicating fence-stripping logic across consumers.
 - **Rule**: All AI JSON parsing must use `parseAiJson` from `src/lib/ai-utils.ts`. Never call `JSON.parse` directly on AI output — models will produce markdown-wrapped JSON despite explicit prompt instructions. The two-pass parse in `parseAiJson` is the canonical defense.
 
 ### Sanitize client-supplied objects before passing to AI generation functions
 - **Date**: 2026-03-27
 - **Source**: pattern
-- **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Target**: `src/components/CLAUDE.md`
+- **Status**: graduated
 - **Lesson**: The video analysis POST route receives a `video` object from the client. Rather than passing `body.video` directly to `generateVideoAiAnalysis`, the route validates required fields, then constructs a `sanitizedVideo` with only the fields the AI prompt consumes. Unknown client-supplied fields cannot reach the AI call or pollute the prompt.
 - **Rule**: When a route passes client-supplied data to an AI generation function, construct a sanitized object with only the known, validated fields before calling the AI function. Never pass `body.someObject` directly — unknown fields can pollute the prompt or introduce injection surface.
 
@@ -193,7 +193,7 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Date**: 2026-03-28
 - **Source**: pattern
 - **Target**: `CLAUDE.md`
-- **Status**: captured
+- **Status**: graduated
 - **Lesson**: The delete button in `SavedSearchesSidebar` is rendered inside the channel-select button. Without calling `e.stopPropagation()` in the delete handler, a delete click also fires the parent button's `onClick`, triggering an unintended channel selection. The `handleDelete` function calls `e.stopPropagation()` before any async work to prevent the event from bubbling.
 - **Rule**: When a clickable element (e.g., a delete icon) is nested inside another clickable element, always call `e.stopPropagation()` at the top of the inner handler. Failure to do so causes both handlers to fire — the outer action fires even when the user intended only the inner one.
 
@@ -220,6 +220,62 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Status**: captured
 - **Lesson**: When the saved-searches sidebar is visible, the main content area loses ~256px of horizontal space. `AnalyticsSection` receives a `sidebarOpen` boolean and changes its outer padding (full-bleed vs. max-width centered), and `VideoGrid` receives the same prop to switch from a 5-column to a 4-column layout (`lg:grid-cols-5` → `lg:grid-cols-4`). The boolean threads from `Hero` → `AnalyticsSection` → `VideoGrid`. This coupling is intentional — the grid density is a function of available width, which the child cannot measure on its own without a ResizeObserver.
 - **Rule**: When a sidebar or panel reduces available content width, pass a `sidebarOpen` boolean through the component tree to components that need to change their density or padding. This is simpler than a ResizeObserver and avoids layout shift caused by post-render measurement.
+
+### Extract shared hooks at two consumers; never duplicate scroll-lock or mount guard logic
+- **Date**: 2026-03-28
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: `useScrollLock` ended up with 3 consumers (Navbar mobile panel, Modal, SavedSearchesDrawer) and `useMounted` with 2 (Modal, SavedSearchesDrawer). The hooks were extracted as purpose-built shared primitives rather than inlined in each component. This prevented three separate implementations of `document.body.style.overflow` save/restore logic that would inevitably drift.
+- **Rule**: Extract `useScrollLock` and `useMounted` to `src/hooks/` the moment a second consumer appears. Never inline scroll-lock or SSR-mount guard logic in a component body — both are shared infrastructure that already exist as hooks.
+
+### Save/restore `overflow` in `useScrollLock` to handle overlapping overlays
+- **Date**: 2026-03-28
+- **Source**: bug
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: When two overlays (e.g., Navbar mobile menu + Modal) can both lock scroll, a naive `document.body.style.overflow = ''` on cleanup unlocks the body even if the other overlay is still open. The correct pattern: save the `overflow` value at lock time (`const original = document.body.style.overflow`) and restore exactly that value on cleanup. This way, if a second lock fires while the first is active, the first cleanup restores the value the second lock saved.
+- **Rule**: `useScrollLock` must capture `document.body.style.overflow` at the time the lock activates and restore that exact value on cleanup — never hardcode `''`. This prevents one overlay's cleanup from unlocking a body that a second overlay still needs locked.
+
+### `div[role=button]` instead of nested `<button>` for HTML validity
+- **Date**: 2026-03-28
+- **Source**: bug
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: `SavedSearchesDrawer` originally wrapped each channel row in a `<button>` that contained a `<Trash2>` `<button>` for delete. Nested interactive elements (`<button>` inside `<button>`) are invalid HTML — browsers hoist the inner button outside the outer one, producing broken click behavior. The fix: replace the outer element with `<div role="button" tabIndex={0}>` and add `onKeyDown` for keyboard support.
+- **Rule**: Never nest a `<button>` inside another `<button>`. When a list row needs both a primary click action and a secondary action (e.g., delete), use `<div role="button" tabIndex={0} onKeyDown={...}>` for the row and keep the `<button>` only for the secondary action.
+
+### Functional updater in `onTouchStart` prevents stale closure on toggle
+- **Date**: 2026-03-28
+- **Source**: bug
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: The chart tooltip `onTouchStart` handler originally read `hoveredPoint` from the enclosing closure to decide whether to set or clear the tooltip: `setHoveredPoint(hoveredPoint === i ? null : i)`. Because SVG event handlers are not recreated on each render, the closure captured a stale `hoveredPoint` — tapping the same point always fell into the same branch. The fix: use the functional updater form `setHoveredPoint(prev => prev === i ? null : i)` so the toggle always reads the current state.
+- **Rule**: Any toggle callback of the form `setState(state === x ? null : x)` inside an SVG event handler or a stable `useCallback` must use the functional updater form `setState(prev => prev === x ? null : x)`. Direct state reads in stable callbacks produce stale closure bugs.
+
+### Floating elements inside SVG need `overflow-visible` on the wrapper, not the SVG
+- **Date**: 2026-03-28
+- **Source**: bug
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: The `EngagementRadar` tooltip is rendered as an HTML `<div>` absolutely positioned over the SVG (not as an SVG element), because SVG cannot clip-mask HTML overlays. The container `<div>` wrapping the SVG had `overflow-hidden` from a parent, which clipped the tooltip. The fix: give the container `overflow-visible` and constrain label widths instead of relying on container clipping.
+- **Rule**: Absolutely positioned HTML elements (tooltips, labels) layered over an SVG will be clipped by any ancestor with `overflow-hidden`. The immediate wrapper of the SVG + HTML overlay layer must have `overflow-visible`. Do not rely on `overflow-hidden` container clipping to contain radar/chart labels — constrain them with `max-w-[calc(100vw-Xrem)]` instead.
+
+### Mobile-only touch targets: use `min-h-[44px] sm:min-h-0`, not a global min-height
+- **Date**: 2026-03-28
+- **Source**: bug
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: Adding `min-h-[44px]` to filter buttons and select elements to meet touch target guidelines caused a desktop layout regression — the toolbar grew taller and the selects misaligned with the search input. The fix: scope the minimum height to mobile only with `min-h-[44px] sm:min-h-0`. On desktop, the element returns to its natural height.
+- **Rule**: When adding 44px minimum touch targets, always scope with `min-h-[44px] sm:min-h-0`. A bare `min-h-[44px]` is a desktop layout regression. The `sm:min-h-0` overrides the mobile minimum above the small breakpoint.
+
+### Bottom sheet drawer for mobile; sidebar for desktop — render both, show conditionally
+- **Date**: 2026-03-28
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: Saved searches needed two completely different layouts: a fixed left sidebar (`lg:block`) on desktop and a bottom-sheet drawer (`lg:hidden`) on mobile. Rather than building a single component that tried to do both with responsive CSS, separate components were built (`SavedSearchesSidebar`, `SavedSearchesDrawer`) and both are rendered in the tree. Visibility is controlled by Tailwind responsive modifiers on their wrapper divs. This avoids complex conditional logic inside a single component and keeps each component's animation and interaction model self-contained.
+- **Rule**: When a UI element needs fundamentally different interaction models on mobile vs. desktop (e.g., drawer vs. sidebar, bottom sheet vs. modal), build two separate components and use Tailwind responsive classes (`hidden lg:block` / `lg:hidden`) to switch between them. Do not build one component that handles both via conditional logic — the interaction models diverge too much.
 
 ## Ready to Graduate
 
@@ -271,3 +327,54 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 
 ### Pass actor as a parameter to avoid double `getActor()` calls
 - **Graduated**: 2026-03-27 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "Call `getActor()` Once Per Request; Pass Actor as Parameter".
+
+### Save/restore `overflow` in `useScrollLock` to handle overlapping overlays
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "`useScrollLock` Must Save/Restore `overflow`, Never Hardcode `''`".
+
+### `div[role=button]` instead of nested `<button>` for HTML validity
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "Never Nest `<button>` Inside `<button>` — Use `div[role=button]` for Rows".
+
+### Functional updater in `onTouchStart` prevents stale closure on toggle
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas (Callback Props in `useEffect` — Use a Ref section already covers the related concept; this extends it to SVG toggle handlers specifically).
+
+### Floating elements inside SVG need `overflow-visible` on the wrapper
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "SVG Tooltip Clipping — Ancestor `overflow-hidden` Clips Absolutely-Positioned HTML Overlays".
+
+### Mobile-only touch targets: use `min-h-[44px] sm:min-h-0`, not a global min-height
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "Mobile Touch Targets: `min-h-[44px] sm:min-h-0`, Never Bare `min-h-[44px]`".
+
+### Bottom sheet drawer for mobile; sidebar for desktop — render both, show conditionally
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "Two Components for Mobile/Desktop Interaction Model Differences".
+
+### Audit logs and events must never include PII
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas. Evidence: login route passes email to auditLog/emitEvent (violation); analyze + logout routes use opaque IDs only (correct application).
+
+### `.env.example` for committed placeholder files, not `.env`
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` under Integration & Runtime Gotchas. Confirmed: `.env.example` committed, `.gitignore` `.env*` glob correctly excludes `.env` but not `.env.example`.
+
+### `getSession()` preferred over `getUser()` when only user ID is needed
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` as "`getSession()` for ID-Only Reads; `getUser()` for Validation". Confirmed by 2 applications: logout route and auth-context.tsx.
+
+### Reset pagination when any filter changes
+- **Graduated**: 2026-03-28 — added to `src/components/CLAUDE.md` under Pagination & Filtering. Confirmed by 4 filter handlers in VideoGrid all calling `resetPage()`.
+
+### CSV export must reference the filtered list, not the raw input
+- **Graduated**: 2026-03-28 — added to `src/components/CLAUDE.md` under Pagination & Filtering as "Export Actions Operate on Filtered Data".
+
+### Infer auth state from 401 response, not from auth context
+- **Graduated**: 2026-03-28 — added to `src/components/CLAUDE.md` under Auth in Components. Confirmed by 2 distinct 401 checks in `useVideoAiAnalysis`.
+
+### Deduplication guard for concurrent callbacks must use a ref, not state
+- **Graduated**: 2026-03-28 — added to `src/components/CLAUDE.md` under Auth in Components as "Deduplication Guards Use Refs, Not State".
+
+### `parseAiJson` two-pass strategy handles unpredictable AI markdown wrapping
+- **Graduated**: 2026-03-28 — added to `src/components/CLAUDE.md` under AI Integration. Confirmed by 2 consumers: `ai-analysis.ts` and `ai-video-analysis.ts`.
+
+### Sanitize client-supplied objects before passing to AI generation functions
+- **Graduated**: 2026-03-28 — added to `src/components/CLAUDE.md` under AI Integration.
+
+### Extract shared hooks at two consumers
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` as part of `useScrollLock` rule. 3 consumers confirmed.
+
+### Nested `<button>` inside `<button>` requires `e.stopPropagation()` on inner click
+- **Graduated**: 2026-03-28 — added to root `CLAUDE.md` as "Never Nest `<button>` Inside `<button>`".

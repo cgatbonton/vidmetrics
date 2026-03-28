@@ -53,7 +53,7 @@ export function SavedSearchesSidebar({
   const reduced = useReducedMotion();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function handleDelete(e: React.MouseEvent, id: string) {
+  async function handleDelete(e: React.MouseEvent | React.KeyboardEvent, id: string) {
     e.stopPropagation();
     setDeletingId(id);
     await onDeleteChannel(id);
@@ -147,18 +147,20 @@ export function SavedSearchesSidebar({
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={(e) => handleDelete(e, channel.id)}
-                        disabled={isDeleting}
-                        className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all"
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleDelete(e, channel.id); }}
+                        aria-disabled={isDeleting || undefined}
+                        className={`shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all ${isDeleting ? 'pointer-events-none' : 'cursor-pointer'}`}
                         aria-label={`Delete ${channel.channelName}`}
                       >
                         {isDeleting
                           ? <Loader2 className="w-3.5 h-3.5 text-white/50 animate-spin" />
                           : <Trash2 className="w-3.5 h-3.5 text-white/40 hover:text-[var(--vm-error)]" />
                         }
-                      </button>
+                      </div>
                     </button>
                   </motion.li>
                 );

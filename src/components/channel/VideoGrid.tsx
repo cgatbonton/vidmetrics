@@ -119,11 +119,11 @@ export function VideoGrid({ videos, onVideoClick, onSave, sidebarOpen }: VideoGr
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold text-white">
           Top {videos.length} Videos
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => downloadCsv(filteredAndSorted, 'vidmetrics-export.csv')}
             className={glassButtonClasses}
@@ -145,7 +145,7 @@ export function VideoGrid({ videos, onVideoClick, onSave, sidebarOpen }: VideoGr
             className={glassButtonClasses}
           >
             <Info className="w-3.5 h-3.5" />
-            How scoring works
+            <span className="hidden sm:inline">How scoring works</span>
           </button>
         </div>
       </div>

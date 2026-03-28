@@ -26,7 +26,7 @@ const PADDING = { top: 30, right: 30, bottom: 50, left: 70 } as const;
 const PLOT_WIDTH = CHART_WIDTH - PADDING.left - PADDING.right;
 const PLOT_HEIGHT = CHART_HEIGHT - PADDING.top - PADDING.bottom;
 const DATE_INPUT_CLASS =
-  'bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[rgba(201,103,232,0.4)] focus:ring-1 focus:ring-[rgba(201,103,232,0.2)] focus:outline-none [color-scheme:dark]';
+  'bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[rgba(201,103,232,0.4)] focus:ring-1 focus:ring-[rgba(201,103,232,0.2)] focus:outline-none [color-scheme:dark] min-h-[44px]';
 
 function formatDateShort(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -176,7 +176,7 @@ export function ViewsOverTimeChart({
           <p className="text-xs font-medium text-white/50 uppercase tracking-wider">
             Views Over Time
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <label className="flex items-center gap-2">
               <span className="text-[11px] text-white/40">From</span>
               <input
@@ -203,7 +203,7 @@ export function ViewsOverTimeChart({
         <div className="w-full overflow-x-auto">
           <svg
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-            className="w-full min-w-[500px]"
+            className="w-full"
             role="img"
             aria-label="Line chart showing video views over time"
           >
@@ -299,6 +299,10 @@ export function ViewsOverTimeChart({
                     fill="transparent"
                     onMouseEnter={() => setHoveredPoint(i)}
                     onMouseLeave={() => setHoveredPoint(null)}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      setHoveredPoint(prev => prev === i ? null : i);
+                    }}
                     style={{ cursor: 'pointer' }}
                   />
                   <circle

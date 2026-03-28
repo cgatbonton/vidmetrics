@@ -11,6 +11,7 @@ import { UrlInput } from './UrlInput';
 import { HeroVideo } from './HeroVideo';
 import { AnalyticsSection } from './AnalyticsSection';
 import { SavedSearchesSidebar } from '@/components/landing/SavedSearchesSidebar';
+import { SavedSearchesDrawer } from '@/components/landing/SavedSearchesDrawer';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { PENDING_SAVE_FLAG } from '@/lib/pending-saves';
 import type { ChannelAnalysis, SavedChannel } from '@/types/analysis';
@@ -135,9 +136,9 @@ export default function Hero() {
       </div>
 
       {showSidebar ? (
-        <div className="flex items-start gap-6 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="hidden lg:block sticky top-4 pt-16">
-            <SavedSearchesSidebar
+        <>
+          <div className="relative z-10 flex justify-center mt-4 lg:hidden">
+            <SavedSearchesDrawer
               saves={saves}
               isLoading={savesLoading}
               onSelectChannel={handleSelectChannel}
@@ -145,18 +146,29 @@ export default function Hero() {
               selectedChannelId={analysisData?.channel.channelId}
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <AnimatePresence mode="wait">
-              {analysisData && (
-                <AnalyticsSection
-                  data={analysisData}
-                  onSave={handleSave}
-                  sidebarOpen
-                />
-              )}
-            </AnimatePresence>
+          <div className="flex items-start gap-6 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="hidden lg:block sticky top-4 pt-16">
+              <SavedSearchesSidebar
+                saves={saves}
+                isLoading={savesLoading}
+                onSelectChannel={handleSelectChannel}
+                onDeleteChannel={deleteChannel}
+                selectedChannelId={analysisData?.channel.channelId}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <AnimatePresence mode="wait">
+                {analysisData && (
+                  <AnalyticsSection
+                    data={analysisData}
+                    onSave={handleSave}
+                    sidebarOpen
+                  />
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
+        </>
       ) : (
         <AnimatePresence mode="wait">
           {analysisData && (

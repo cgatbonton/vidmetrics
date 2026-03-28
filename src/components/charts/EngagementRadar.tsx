@@ -92,7 +92,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
           Performance Profile
         </p>
         <div className="flex justify-center">
-          <div className="relative w-full max-w-sm sm:max-w-md overflow-hidden">
+          <div className="relative w-full max-w-sm sm:max-w-md overflow-visible">
             {/* SVG radar chart */}
             <svg
               viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
@@ -207,6 +207,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
                       onMouseLeave={() => setActiveTooltip(null)}
                       onFocus={() => setActiveTooltip(i)}
                       onBlur={() => setActiveTooltip(null)}
+                      onClick={() => setActiveTooltip(activeTooltip === i ? null : i)}
                       aria-label={`Info about ${axis.label}`}
                     >
                       <Info className="w-3 h-3" />
@@ -220,7 +221,7 @@ export function EngagementRadar({ scores }: EngagementRadarProps) {
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15 }}
-                          className="absolute z-50 w-52 p-3 rounded-lg bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 shadow-xl"
+                          className="absolute z-50 w-48 max-w-[calc(100vw-3rem)] p-3 rounded-lg bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 shadow-xl"
                           style={{
                             bottom: isTop ? undefined : '100%',
                             top: isTop ? '100%' : undefined,

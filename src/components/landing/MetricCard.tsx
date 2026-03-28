@@ -45,7 +45,7 @@ export function MetricCard({
         <p className="text-xs font-medium text-white/50 uppercase tracking-wider">
           {label}
         </p>
-        <div className="text-3xl font-bold font-mono text-white mt-2">
+        <div className="text-2xl sm:text-3xl font-bold font-mono text-white mt-2">
           <AnimatedCounter target={value} formatter={formatter} />
         </div>
       </GlassCard>

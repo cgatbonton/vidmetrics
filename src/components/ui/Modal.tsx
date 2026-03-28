@@ -1,27 +1,36 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useScrollLock } from '@/hooks/useScrollLock';
+import { useMounted } from '@/hooks/useMounted';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
   title?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
-export function Modal({ isOpen, onClose, children, title }: ModalProps) {
+const MODAL_SIZES = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+} as const;
+
+export function Modal({ isOpen, onClose, children, title, size = 'lg' }: ModalProps) {
   const reduced = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useScrollLock(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -63,7 +72,7 @@ export function Modal({ isOpen, onClose, children, title }: ModalProps) {
           {...overlayMotionProps}
         >
           <motion.div
-            className="relative bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/5 rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[calc(100vh-4rem)] overflow-y-auto z-[51]"
+            className={`relative bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/5 rounded-2xl p-6 ${MODAL_SIZES[size]} w-full mx-4 max-h-[calc(100vh-4rem)] overflow-y-auto z-[51]`}
             onClick={(e) => e.stopPropagation()}
             {...motionProps}
           >

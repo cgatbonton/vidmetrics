@@ -43,7 +43,7 @@ export default function DashboardPage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-3xl font-bold text-white">Your Saved Analyses</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">Your Saved Analyses</h1>
         <p className="text-white/60 mt-2">
           Click any video to see detailed metrics
         </p>
