@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { errorResponse } from "@/lib/errors";
 import { getAuthenticatedActor } from "@/lib/auth/get-actor";
+import { checkRateLimit, crudLimiter } from "@/lib/rate-limit";
 import { auditLog } from "@/lib/audit";
 import { emitEvent } from "@/lib/events";
 import { mapSavedAnalysisRecord } from "@/lib/db/mappers";
@@ -11,6 +12,9 @@ export async function GET() {
   if (!actor) {
     return errorResponse("PERMISSION_DENIED");
   }
+
+  const rl = await checkRateLimit(crudLimiter, actor.id);
+  if (rl.limited) return rl.response;
 
   const supabase = await createServerClient();
   const { data: records, error } = await supabase
@@ -37,6 +41,9 @@ export async function POST(request: NextRequest) {
   if (!actor) {
     return errorResponse("PERMISSION_DENIED");
   }
+
+  const rl = await checkRateLimit(crudLimiter, actor.id);
+  if (rl.limited) return rl.response;
 
   const body = await request.json().catch(() => null);
 

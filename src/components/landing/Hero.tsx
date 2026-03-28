@@ -10,9 +10,10 @@ import { Footer } from '@/components/layout/Footer';
 import { UrlInput } from './UrlInput';
 import { HeroVideo } from './HeroVideo';
 import { AnalyticsSection } from './AnalyticsSection';
+import { SavedSearchesSidebar } from '@/components/landing/SavedSearchesSidebar';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { PENDING_SAVE_FLAG } from '@/lib/pending-saves';
-import type { ChannelAnalysis } from '@/types/analysis';
+import type { ChannelAnalysis, SavedChannel } from '@/types/analysis';
 
 const PENDING_SAVE_KEY = 'vm:pendingSave';
 const PENDING_SAVE_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -24,9 +25,30 @@ export default function Hero() {
   const [pendingSave, setPendingSave] = useState(false);
   const { user, isLoading } = useAuth();
   const { addToast } = useToast();
-  const { saveChannel } = useSavedChannels();
+  const { saves, isLoading: savesLoading, fetchSaves, saveChannel, deleteChannel } = useSavedChannels();
   const saveChannelRef = useRef(saveChannel);
   saveChannelRef.current = saveChannel;
+  const fetchSavesRef = useRef(fetchSaves);
+  fetchSavesRef.current = fetchSaves;
+
+  const handleSelectChannel = useCallback((channel: SavedChannel) => {
+    setAnalysisData({
+      channel: {
+        channelId: channel.channelId,
+        channelName: channel.channelName,
+        channelAvatar: channel.channelAvatar,
+        subscriberCount: channel.subscriberCount,
+        videoCount: channel.videoCount,
+      },
+      videos: channel.videos,
+      contentTypes: channel.contentTypes,
+      aiAnalysis: channel.aiAnalysis,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (user) fetchSavesRef.current();
+  }, [user]);
 
   const executeSave = useCallback(async (data: ChannelAnalysis) => {
     const result = await saveChannelRef.current(data);
@@ -34,6 +56,7 @@ export default function Hero() {
       addToast(result.error.reason, 'error');
     } else {
       addToast('Analytics saved successfully', 'success');
+      fetchSavesRef.current();
     }
   }, [addToast]);
 
@@ -109,14 +132,37 @@ export default function Hero() {
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {analysisData && (
-          <AnalyticsSection
-            data={analysisData}
-            onSave={handleSave}
-          />
-        )}
-      </AnimatePresence>
+      {analysisData && user ? (
+        <div className="flex gap-6 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex-1 min-w-0">
+            <AnimatePresence mode="wait">
+              <AnalyticsSection
+                data={analysisData}
+                onSave={handleSave}
+                sidebarOpen
+              />
+            </AnimatePresence>
+          </div>
+          <div className="hidden lg:block">
+            <SavedSearchesSidebar
+              saves={saves}
+              isLoading={savesLoading}
+              onSelectChannel={handleSelectChannel}
+              onDeleteChannel={deleteChannel}
+              selectedChannelId={analysisData?.channel.channelId}
+            />
+          </div>
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          {analysisData && (
+            <AnalyticsSection
+              data={analysisData}
+              onSave={handleSave}
+            />
+          )}
+        </AnimatePresence>
+      )}
 
       <AuthModal
         isOpen={showAuthModal}

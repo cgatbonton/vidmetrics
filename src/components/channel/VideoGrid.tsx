@@ -21,9 +21,10 @@ interface VideoGridProps {
   videos: LabeledVideo[];
   onVideoClick: (video: ScoredVideo) => void;
   onSave?: () => void;
+  sidebarOpen?: boolean;
 }
 
-export function VideoGrid({ videos, onVideoClick, onSave }: VideoGridProps) {
+export function VideoGrid({ videos, onVideoClick, onSave, sidebarOpen }: VideoGridProps) {
   const [legendOpen, setLegendOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const reduced = useReducedMotion();
@@ -170,7 +171,7 @@ export function VideoGrid({ videos, onVideoClick, onSave }: VideoGridProps) {
       </div>
 
       <motion.div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4"
+        className={`grid grid-cols-1 sm:grid-cols-2 ${sidebarOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-5'} gap-4 mt-4`}
         {...containerProps}
       >
         {visibleVideos.map((video) => (

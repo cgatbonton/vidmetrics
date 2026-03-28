@@ -377,3 +377,22 @@ Write to the **nearest** CLAUDE.md in the directory tree:
 ### Validate Client-Supplied JSONB Blobs at the Route Boundary
 - Supabase will accept any valid JSON into a JSONB column. A malformed domain object stored as JSONB only surfaces as a runtime error at read/claim time, not at write time.
 - Always validate required fields of any client-supplied JSONB payload at the API route boundary before inserting. Drop invalid blobs silently rather than storing unclaimable data.
+
+### ERRORS Catalog — Always Use `errorResponse(key)`, Never Inline Strings
+- When an error code exists in the `ERRORS` catalog in `src/lib/errors.ts`, call `errorResponse(key)`. Never inline the error `code`, `reason`, or `remediation` strings directly.
+- This applies to route handlers AND shared helpers (e.g., `checkRateLimit`) that return error responses — they are not exempt from the catalog rule.
+- Reserve `createErrorResponse()` only for errors with no catalog entry.
+
+### Serverless Rate Limiters — Lazy Init, Fail-Open on Missing Env Vars
+- Rate limiter initialization that reads env vars must be lazy and guarded. If `UPSTASH_REDIS_REST_URL` or `UPSTASH_REDIS_REST_TOKEN` are absent, `getRedis()` returns `null`. All limiters are `null` when Redis is unavailable.
+- `checkRateLimit(null, id)` must return `{ limited: false }` — a missing Redis config produces fail-open behavior, not a startup crash. This is critical for local dev, test, and preview deploys where Redis may not be configured.
+- Also: catch errors inside `checkRateLimit` and fail-open if Redis throws during a request — Redis being down must not take down the route.
+
+### Tiered Rate Limits by Auth State
+- Endpoints that serve both anonymous and authenticated traffic need two separate limiters: a tighter limit keyed on IP for anonymous callers, a looser limit keyed on `actor.id` for authenticated callers.
+- Resolve the actor first (one `getActor()` call), then select the limiter: anonymous → IP key, authenticated → user ID key.
+- Pattern in `src/app/api/analyze/route.ts`: `const limiter = isAnonymous(actor) ? analyzeLimiter : analyzeAuthLimiter`.
+
+### Call `getActor()` Once Per Request; Pass Actor as Parameter
+- Call `getActor()` exactly once at the top of the route handler. Pass the resolved `Actor` to any sub-handlers as a parameter.
+- Never call `getActor()` inside a helper that is invoked from a route that already resolved the actor — each call makes a Supabase JWT validation network request.

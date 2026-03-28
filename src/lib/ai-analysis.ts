@@ -1,4 +1,4 @@
-import openai from "@/lib/openai";
+import { callAi, parseAiJson } from "@/lib/ai-utils";
 import type {
   ChannelInfo,
   LabeledVideo,
@@ -60,35 +60,24 @@ Rules:
 - Do not repeat metrics verbatim. Interpret them.`;
 }
 
+function toAiAnalysis(parsed: Record<string, unknown>): AiAnalysis {
+  return {
+    whatsWorking: String(parsed.whatsWorking ?? ""),
+    contentStrategy: String(parsed.contentStrategy ?? ""),
+    opportunityGaps: String(parsed.opportunityGaps ?? ""),
+    keyTakeaway: String(parsed.keyTakeaway ?? ""),
+  };
+}
+
 export async function generateAiAnalysis(
   input: AiAnalysisInput
 ): Promise<AiAnalysis> {
-  const prompt = buildPrompt(input);
+  const raw = await callAi(buildPrompt(input));
 
-  const completion = await openai.chat.completions.create({
-    model: "o4-mini",
-    messages: [{ role: "user", content: prompt }],
+  return parseAiJson(raw, toAiAnalysis, {
+    whatsWorking: raw,
+    contentStrategy: "",
+    opportunityGaps: "",
+    keyTakeaway: "",
   });
-
-  const raw = completion.choices[0]?.message?.content ?? "";
-
-  function toAiAnalysis(parsed: Record<string, unknown>): AiAnalysis {
-    return {
-      whatsWorking: String(parsed.whatsWorking ?? ""),
-      contentStrategy: String(parsed.contentStrategy ?? ""),
-      opportunityGaps: String(parsed.opportunityGaps ?? ""),
-      keyTakeaway: String(parsed.keyTakeaway ?? ""),
-    };
-  }
-
-  try {
-    return toAiAnalysis(JSON.parse(raw));
-  } catch {
-    const cleaned = raw.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
-    try {
-      return toAiAnalysis(JSON.parse(cleaned));
-    } catch {
-      return { whatsWorking: raw, contentStrategy: "", opportunityGaps: "", keyTakeaway: "" };
-    }
-  }
 }

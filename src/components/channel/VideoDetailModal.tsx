@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui/Modal';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 import { ScoreBadge } from '@/components/channel/ScoreBadge';
+import { VideoAiAnalysisPanel } from '@/components/channel/VideoAiAnalysisPanel';
 import { EngagementRadar } from '@/components/charts/EngagementRadar';
 import { ViewsOverTimeChart } from '@/components/charts/ViewsOverTimeChart';
 import { computeRadarScores } from '@/lib/metrics';
@@ -86,6 +87,10 @@ export function VideoDetailModal({
           <span className="text-sm text-white/70">
             {TIER_LABELS[video.vmsTier]}
           </span>
+        </div>
+
+        <div className="mt-4">
+          <VideoAiAnalysisPanel video={video} channelSubs={channelSubs} />
         </div>
 
         <div className="mt-6">

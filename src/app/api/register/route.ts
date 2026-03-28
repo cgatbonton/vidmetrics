@@ -3,12 +3,16 @@ import { createServerClient } from "@/lib/supabase/server";
 import { emitEvent } from "@/lib/events";
 import { auditLog } from "@/lib/audit";
 import { errorResponse } from "@/lib/errors";
+import { checkRateLimit, getClientIp, authLimiter } from "@/lib/rate-limit";
 import type { Actor } from "@/types/api";
 
 const REGISTRATION_ACTOR: Actor = { type: "system", id: "registration" };
 const MIN_PASSWORD_LENGTH = 8;
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = await checkRateLimit(authLimiter, getClientIp(req));
+  if (rl.limited) return rl.response;
+
   const body = await req.json().catch(() => null);
 
   if (!body?.email || !body?.password) {

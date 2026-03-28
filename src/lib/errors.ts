@@ -106,8 +106,8 @@ export const ERRORS = {
   },
   RATE_LIMITED: {
     code: "RATE_LIMITED",
-    reason: "Too many attempts — please wait a minute and try again",
-    remediation: "Supabase limits confirmation emails per hour",
+    reason: "Too many requests — please slow down and try again",
+    remediation: "Wait a moment before retrying",
     status: 429,
   },
   PASSWORD_TOO_SHORT: {
@@ -115,6 +115,12 @@ export const ERRORS = {
     reason: "Password must be at least 8 characters",
     remediation: "Choose a longer password",
     status: 400,
+  },
+  VIDEO_AI_GENERATION_FAILED: {
+    code: "VIDEO_AI_GENERATION_FAILED",
+    reason: "Failed to generate AI analysis for this video",
+    remediation: "Try again in a few moments. If the problem persists, the AI service may be temporarily unavailable",
+    status: 502,
   },
 } as const;
 

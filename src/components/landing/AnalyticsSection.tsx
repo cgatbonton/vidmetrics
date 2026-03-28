@@ -11,9 +11,10 @@ import type { ChannelAnalysis, ScoredVideo } from '@/types/analysis';
 interface AnalyticsSectionProps {
   data: ChannelAnalysis;
   onSave?: () => void;
+  sidebarOpen?: boolean;
 }
 
-export function AnalyticsSection({ data, onSave }: AnalyticsSectionProps) {
+export function AnalyticsSection({ data, onSave, sidebarOpen }: AnalyticsSectionProps) {
   const reduced = useReducedMotion();
   const [selectedVideo, setSelectedVideo] = useState<ScoredVideo | null>(null);
 
@@ -29,13 +30,13 @@ export function AnalyticsSection({ data, onSave }: AnalyticsSectionProps) {
   return (
       <motion.div
         key={data.channel.channelId}
-        className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+        className={sidebarOpen ? "relative z-10 py-16" : "relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"}
         {...containerProps}
       >
         <ChannelOverviewBar channel={data.channel} />
 
         <div className="mt-8">
-          <VideoGrid videos={data.videos} onVideoClick={setSelectedVideo} onSave={onSave} />
+          <VideoGrid videos={data.videos} onVideoClick={setSelectedVideo} onSave={onSave} sidebarOpen={sidebarOpen} />
         </div>
 
         <VideoDetailModal

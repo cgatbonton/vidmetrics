@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { errorResponse } from "@/lib/errors";
 import { getAuthenticatedActor } from "@/lib/auth/get-actor";
 import { insertSavedChannel } from "@/lib/db/saved-channels";
+import { checkRateLimit, crudLimiter } from "@/lib/rate-limit";
 import type { ChannelAnalysis } from "@/types/analysis";
 
 const STALE_THRESHOLD_HOURS = 24;
@@ -12,6 +13,9 @@ export async function POST(): Promise<Response> {
   if (!actor) {
     return errorResponse("PERMISSION_DENIED");
   }
+
+  const rl = await checkRateLimit(crudLimiter, actor.id);
+  if (rl.limited) return rl.response;
 
   const email = actor.humanPrincipal;
   if (!email) {

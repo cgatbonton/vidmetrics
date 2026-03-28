@@ -133,3 +133,17 @@ export interface MetricSnapshot {
   commentCount: number;
   recordedAt: string;
 }
+
+export interface VideoAiAnalysis {
+  performanceSummary: string;
+  strengthsAndWeaknesses: string;
+  suggestions: string;
+  competitiveAngle: string;
+}
+
+export interface SavedVideoAiAnalysis {
+  id: string;
+  videoId: string;
+  analysis: VideoAiAnalysis;
+  createdAt: string;
+}

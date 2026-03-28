@@ -16,8 +16,8 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Date**: 2026-03-27
 - **Source**: correction
 - **Target**: `CLAUDE.md`
-- **Status**: captured
-- **Lesson**: The register route used `createErrorResponse()` inline for the EMAIL_TAKEN case even though that code existed in the ERRORS catalog. The critic had to catch this. `createErrorResponse()` bypasses the catalog and allows strings to drift out of sync.
+- **Status**: ready-to-graduate
+- **Lesson**: The register route used `createErrorResponse()` inline for the EMAIL_TAKEN case even though that code existed in the ERRORS catalog. The critic had to catch this. Second occurrence: `checkRateLimit` inlined RATE_LIMITED strings instead of calling `errorResponse("RATE_LIMITED")`. Same violation, different file, different session.
 - **Rule**: When the error code exists in the ERRORS catalog in `src/lib/errors.ts`, always call `errorResponse(key)`. Reserve `createErrorResponse()` for one-off errors with no catalog entry.
 
 ### `getUser()` not `getSession()` for auth validation in client context
@@ -125,6 +125,70 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 - **Lesson**: An agent-first audit flagged `useSavedChannels` as missing structured errors. By the time the fix was applied, the hook had already been updated by a parallel change. Applying the patch a second time caused a merge conflict and a redundant rewrite that had to be reverted.
 - **Rule**: Before applying any fix identified by an audit, read the current state of the target file. If the violation is already resolved, skip the patch. Never treat audit findings as unconditionally applicable — they describe a snapshot, not the live state.
 
+### Serverless rate limiters must use lazy Redis init for fail-open consistency
+- **Date**: 2026-03-27
+- **Source**: discovery
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: The initial rate-limit implementation instantiated `Redis.fromEnv()` at module load time. In environments where `UPSTASH_REDIS_REST_URL` or `UPSTASH_REDIS_REST_TOKEN` are absent (local dev, test, preview deploys), this throws at startup and crashes all routes that import the module — even those that never call `checkRateLimit`. The fix: wrap the instantiation in a `getRedis()` guard that returns `null` when env vars are missing, and make all limiters `null` when Redis is unavailable. `checkRateLimit` then short-circuits to `{ limited: false }` so missing env vars produce fail-open behavior instead of a crash.
+- **Rule**: Rate limiter initialization that depends on env vars must be lazy and guarded. Return `null` from the init function when vars are absent; `checkRateLimit` must treat a `null` limiter as "not limited". This ensures missing Redis config causes fail-open behavior, not a startup crash.
+
+### Pass actor as a parameter to avoid double `getActor()` calls
+- **Date**: 2026-03-27
+- **Source**: discovery
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: The analyze route originally called `getActor()` at the top of `POST`, then again inside `handleChannelAnalysis` and `handleVideoAnalysis`. Each call makes a Supabase network request to validate the JWT. Refactoring to call `getActor()` once in `POST` and pass the resolved `Actor` as a parameter eliminates redundant auth network calls and makes the actor identity consistent across the full request lifecycle.
+- **Rule**: Call `getActor()` exactly once per request, at the top of the route handler. Pass the resolved `Actor` as a parameter to any sub-handlers. Never call `getActor()` inside a helper that is called from a route that already resolved the actor.
+
+### `checkRateLimit` must call `errorResponse()`, not duplicate error strings
+- **Date**: 2026-03-27
+- **Source**: correction
+- **Target**: `CLAUDE.md`
+- **Status**: graduated (merged into the errorResponse catalog rule above)
+- **Lesson**: An early version of `checkRateLimit` inlined the RATE_LIMITED error fields directly rather than calling `errorResponse("RATE_LIMITED")`. This created a second source of truth for those strings and broke the invariant that all ERRORS catalog entries are the single definition. The code review caught this and required the fix.
+- **Rule**: `checkRateLimit` (and any other shared helper that returns error responses) must call `errorResponse(key)` from the ERRORS catalog, never inline raw error strings. This is a concrete application of the existing rule: when the error code exists in the ERRORS catalog, always use `errorResponse(key)`.
+
+### Tiered rate limits by auth state, not a single global limit
+- **Date**: 2026-03-27
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: graduated
+- **Lesson**: The analyze endpoint uses two separate Ratelimit instances: a tighter anonymous limiter (5/min keyed on IP) and a looser authenticated limiter (15/min keyed on user ID). The route resolves the actor first, then selects the appropriate limiter. This pattern prevents anonymous abuse while not punishing paying/registered users, and it uses the correct identifier type (IP for anonymous, stable user ID for authenticated).
+- **Rule**: When adding rate limiting to an endpoint that accepts both anonymous and authenticated traffic, use tiered limiters: a tighter limit keyed on IP for anonymous callers, a looser limit keyed on `actor.id` for authenticated callers. Always resolve the actor before selecting the limiter.
+
+### Infer auth state from 401 response, not from auth context
+- **Date**: 2026-03-27
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: `VideoAiAnalysisPanel` is mounted inside `VideoDetailModal`, which is accessible to anonymous users on the landing page. Importing the auth context to show/hide the generate button would couple the modal to an auth provider not always present. Instead, `useVideoAiAnalysis` fires the API request and sets `isAuthenticated = false` on receiving a 401. The component renders a "Sign in" prompt based on that derived state — no auth context import needed.
+- **Rule**: When a component is accessible to both anonymous and authenticated users, derive auth state from API response codes (401 → not authenticated) rather than importing the auth context. This avoids coupling the component to an auth provider it may not always be wrapped in.
+
+### Deduplication guard for concurrent callbacks must use a ref, not state
+- **Date**: 2026-03-27
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: The `generate` callback in `useVideoAiAnalysis` uses an `isGeneratingRef` (a ref, not state) as a double-click deduplication guard. A ref is used instead of the `isGenerating` state flag because `useCallback` with an empty dep array captures a stale closure — the closure always sees the initial state value. A ref is always current regardless of closure age.
+- **Rule**: When a `useCallback` with an empty dep array needs to guard against concurrent invocations (e.g., double-click), use a `useRef` flag rather than a state variable. State captured in a stable callback closure is stale; a ref is always live.
+
+### `parseAiJson` two-pass strategy handles unpredictable AI markdown wrapping
+- **Date**: 2026-03-27
+- **Source**: discovery
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: AI models frequently wrap JSON output in markdown code fences (` ```json ... ``` `) even when the prompt explicitly says "no code fences." `parseAiJson` in `src/lib/ai-utils.ts` handles this with a two-pass strategy: (1) attempt `JSON.parse` on the raw string; (2) if that fails, strip markdown fence syntax and retry. This makes all AI JSON parsing resilient without duplicating fence-stripping logic across consumers.
+- **Rule**: All AI JSON parsing must use `parseAiJson` from `src/lib/ai-utils.ts`. Never call `JSON.parse` directly on AI output — models will produce markdown-wrapped JSON despite explicit prompt instructions. The two-pass parse in `parseAiJson` is the canonical defense.
+
+### Sanitize client-supplied objects before passing to AI generation functions
+- **Date**: 2026-03-27
+- **Source**: pattern
+- **Target**: `CLAUDE.md`
+- **Status**: captured
+- **Lesson**: The video analysis POST route receives a `video` object from the client. Rather than passing `body.video` directly to `generateVideoAiAnalysis`, the route validates required fields, then constructs a `sanitizedVideo` with only the fields the AI prompt consumes. Unknown client-supplied fields cannot reach the AI call or pollute the prompt.
+- **Rule**: When a route passes client-supplied data to an AI generation function, construct a sanitized object with only the known, validated fields before calling the AI function. Never pass `body.someObject` directly — unknown fields can pollute the prompt or introduce injection surface.
+
 ## Ready to Graduate
 
 <!-- Lessons confirmed by a second occurrence or successful application move here -->
@@ -163,3 +227,15 @@ Knowledge captured from agent work sessions. Lessons graduate to CLAUDE.md files
 
 ### RLS for pre-auth insert: `WITH CHECK (true)` + email subquery for read/delete
 - **Graduated**: 2026-03-27 — added to root `CLAUDE.md` under Integration & Runtime Gotchas
+
+### Use `errorResponse(key)` for catalog errors, not `createErrorResponse()`
+- **Graduated**: 2026-03-27 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "ERRORS Catalog — Always Use `errorResponse(key)`, Never Inline Strings". Confirmed by second occurrence: `checkRateLimit` inlined RATE_LIMITED strings instead of calling `errorResponse("RATE_LIMITED")`.
+
+### Serverless rate limiters must use lazy Redis init for fail-open consistency
+- **Graduated**: 2026-03-27 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "Serverless Rate Limiters — Lazy Init, Fail-Open on Missing Env Vars".
+
+### Tiered rate limits by auth state, not a single global limit
+- **Graduated**: 2026-03-27 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "Tiered Rate Limits by Auth State".
+
+### Pass actor as a parameter to avoid double `getActor()` calls
+- **Graduated**: 2026-03-27 — added to root `CLAUDE.md` under Integration & Runtime Gotchas as "Call `getActor()` Once Per Request; Pass Actor as Parameter".

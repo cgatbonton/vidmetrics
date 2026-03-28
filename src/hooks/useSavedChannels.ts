@@ -10,6 +10,7 @@ interface UseSavedChannelsReturn {
   error: string | null;
   fetchSaves: () => Promise<void>;
   saveChannel: (analysis: ChannelAnalysis) => Promise<SaveResult<SavedChannel>>;
+  deleteChannel: (id: string) => Promise<{ error: StructuredError | null }>;
 }
 
 export function useSavedChannels(): UseSavedChannelsReturn {
@@ -57,5 +58,15 @@ export function useSavedChannels(): UseSavedChannelsReturn {
     return { entity: data.entity, error: null, nextActions: data.nextActions ?? [] };
   }, []);
 
-  return { saves, isLoading, error, fetchSaves, saveChannel };
+  const deleteChannel = useCallback(async (id: string): Promise<{ error: StructuredError | null }> => {
+    const res = await fetch(`/api/saved-channels/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error as StructuredError };
+    }
+    setSaves(prev => prev.filter(s => s.id !== id));
+    return { error: null };
+  }, []);
+
+  return { saves, isLoading, error, fetchSaves, saveChannel, deleteChannel };
 }

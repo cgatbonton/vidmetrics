@@ -1,7 +1,9 @@
 import type {
   SavedAnalysis,
   SavedChannel,
+  SavedVideoAiAnalysis,
   VideoAnalysis,
+  VideoAiAnalysis,
   LabeledVideo,
   ContentTypeBreakdown,
   AiAnalysis,
@@ -54,5 +56,21 @@ export function mapSavedChannelRecord(record: SavedChannelRow): SavedChannel {
     contentTypes: record.content_types,
     aiAnalysis: record.ai_analysis,
     savedAt: record.saved_at,
+  };
+}
+
+interface VideoAiAnalysisRow {
+  id: string;
+  video_id: string;
+  analysis: VideoAiAnalysis;
+  created_at: string;
+}
+
+export function mapVideoAiAnalysisRecord(record: VideoAiAnalysisRow): SavedVideoAiAnalysis {
+  return {
+    id: record.id,
+    videoId: record.video_id,
+    analysis: record.analysis,
+    createdAt: record.created_at,
   };
 }

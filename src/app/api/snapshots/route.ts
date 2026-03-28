@@ -1,8 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { errorResponse } from "@/lib/errors";
+import { checkRateLimit, getClientIp, crudLimiter } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  const rl = await checkRateLimit(crudLimiter, getClientIp(request));
+  if (rl.limited) return rl.response;
+
   const videoId = request.nextUrl.searchParams.get("videoId");
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");

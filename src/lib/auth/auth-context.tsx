@@ -30,6 +30,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (validatedUser) {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         setSession(currentSession);
+
+        try {
+          const hasPending = localStorage.getItem(PENDING_SAVE_FLAG);
+          if (hasPending) {
+            localStorage.removeItem(PENDING_SAVE_FLAG);
+            fetch('/api/pending-saves/claim', { method: 'POST' }).catch(() => {});
+          }
+        } catch {}
       }
       setIsLoading(false);
     });

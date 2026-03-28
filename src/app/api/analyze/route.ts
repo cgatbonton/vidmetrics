@@ -14,12 +14,13 @@ import { classifyContentTypes } from "@/lib/content-types";
 import { generateAiAnalysis } from "@/lib/ai-analysis";
 import { createServerClient } from "@/lib/supabase/server";
 import { getActor, isAnonymous } from "@/lib/auth/get-actor";
+import { checkRateLimit, getClientIp, analyzeLimiter, analyzeAuthLimiter } from "@/lib/rate-limit";
 import { auditLog } from "@/lib/audit";
 import { emitEvent } from "@/lib/events";
+import type { Actor } from "@/types/api";
 import type { ChannelAnalysisResponse } from "@/types/analysis";
 
-async function handleVideoAnalysis(videoId: string, url: string) {
-  const actor = await getActor();
+async function handleVideoAnalysis(videoId: string, url: string, actor: Actor) {
   const authenticated = !isAnonymous(actor);
 
   let videoItem;
@@ -95,9 +96,9 @@ const AI_ANALYSIS_LIMIT = 25;
 
 async function handleChannelAnalysis(
   identifier: { type: "handle" | "id" | "custom"; value: string },
-  url: string
+  url: string,
+  actor: Actor
 ) {
-  const actor = await getActor();
   const authenticated = !isAnonymous(actor);
 
   let channelId: string;
@@ -199,20 +200,17 @@ export async function POST(request: NextRequest): Promise<Response> {
     return errorResponse("VALIDATION_ERROR");
   }
 
-  // Primary: try channel analysis
+  const actor = await getActor();
+  const identifier = isAnonymous(actor) ? getClientIp(request) : actor.id;
+  const limiter = isAnonymous(actor) ? analyzeLimiter : analyzeAuthLimiter;
+  const rl = await checkRateLimit(limiter, identifier);
+  if (rl.limited) return rl.response;
+
   const channelIdentifier = extractChannelIdentifier(body.url);
+  if (channelIdentifier) return handleChannelAnalysis(channelIdentifier, body.url, actor);
 
-  if (channelIdentifier) {
-    return handleChannelAnalysis(channelIdentifier, body.url);
-  }
-
-  // Fallback: try single-video analysis for backward compatibility
   const videoId = extractVideoId(body.url);
+  if (videoId) return handleVideoAnalysis(videoId, body.url, actor);
 
-  if (videoId) {
-    return handleVideoAnalysis(videoId, body.url);
-  }
-
-  // Neither channel nor video URL
   return errorResponse("INVALID_CHANNEL_URL");
 }
